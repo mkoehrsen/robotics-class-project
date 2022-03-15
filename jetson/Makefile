@@ -15,3 +15,7 @@ compile:
 install: 
 	cd arduino/firmata_motor_nano; arduino-cli compile -b arduino:avr:nano -u \
 		-p `arduino-cli board list --format json | jq -r '.[0].port.address'`
+
+run:
+	pip3 install -r requirements.txt
+	flask run --host 0.0.0.0 --port 8080
