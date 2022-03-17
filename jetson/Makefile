@@ -7,6 +7,11 @@
 #
 # You need permission to open the arduino port (log out and back in after running this):
 #   sudo usermod -a -G dialout $USER
+#
+# Install other requirements:
+#   pip3 install -r requirements.txt
+#
+# I had some trouble with virtualenv and the system python so I stopped using it.
 
 
 compile: 
@@ -17,5 +22,4 @@ install:
 		-p `arduino-cli board list --format json | jq -r '.[0].port.address'`
 
 run:
-	pip3 install -r requirements.txt
 	flask run --host 0.0.0.0 --port 8080

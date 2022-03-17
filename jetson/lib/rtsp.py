@@ -11,6 +11,9 @@ from gi.repository import Gst, GstRtspServer, GObject
 
 _logger = logging.getLogger(__name__)
 
+DEFAULT_PORT=8554
+DEFAULT_PATH="/video_stream"
+
 # Sensor Factory class which inherits the GstRtspServer base class and add
 # properties to it.
 class SensorFactory(GstRtspServer.RTSPMediaFactory):
@@ -39,10 +42,6 @@ class SensorFactory(GstRtspServer.RTSPMediaFactory):
         if self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
-                # It is better to change the resolution of the camera 
-                # instead of changing the image shape as it affects the image quality.
-                frame = cv2.resize(frame, (opt.image_width, opt.image_height), \
-                    interpolation = cv2.INTER_LINEAR)
                 data = frame.tostring()
                 buf = Gst.Buffer.new_allocate(None, len(data), None)
                 buf.fill(0, data)
@@ -73,8 +72,8 @@ class GstServer(GstRtspServer.RTSPServer):
         super(GstServer, self).__init__(**properties)
         self.factory = SensorFactory()
         self.factory.set_shared(True)
-        self.set_service(str(opt.port))
-        self.get_mount_points().add_factory(opt.stream_uri, self.factory)
+        self.set_service(str(DEFAULT_PORT))
+        self.get_mount_points().add_factory(DEFAULT_PATH, self.factory)
         self.attach(None)
 
 # Entry point for running the rtsp server.
