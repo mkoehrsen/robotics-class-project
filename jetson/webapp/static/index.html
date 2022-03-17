@@ -66,7 +66,7 @@
 
         document.getElementById("cell-direction").innerHTML = currDir;
         document.getElementById("cell-throttle").innerHTML = throttle.toPrecision(2);
-        document.getElementById("cell-camera").innerHTML = cameraOn ? "On": "Off";
+        // document.getElementById("cell-camera").innerHTML = cameraOn ? "On": "Off";
 
         fetch("/state", {
           method: 'POST',
