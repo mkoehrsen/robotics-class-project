@@ -13,13 +13,14 @@
 #
 # I had some trouble with virtualenv and the system python so I stopped using it.
 
-
-compile: 
+compile:
 	cd arduino/firmata_motor_nano; arduino-cli compile -b arduino:avr:nano
 
-install: 
+install:
 	cd arduino/firmata_motor_nano; arduino-cli compile -b arduino:avr:nano -u \
 		-p `arduino-cli board list --format json | jq -r '.[0].port.address'`
 
 run:
 	flask run --host 0.0.0.0 --port 8080
+
+.PHONY: compile install run
