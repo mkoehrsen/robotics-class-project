@@ -1,6 +1,8 @@
 import flask
 import logging
 import motorctl
+import rtsp
+import threading
 
 logging.basicConfig(level=logging.DEBUG)
 _logger = logging.getLogger(__name__)
@@ -34,3 +36,5 @@ def update_state():
     # TODO -- camera control
 
     return flask.make_response({"status": "OK"})
+
+threading.Thread(target=rtsp.run_server).start()
