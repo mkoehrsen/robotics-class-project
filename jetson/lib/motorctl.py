@@ -13,7 +13,7 @@ _logger = logging.getLogger(__name__)
 class MotorCtl(object):
     def __init__(self):
         try:
-            proc = subprocess.run(["arduino-cli", "board", "list", "--format", "json"], capture_output=True)
+            proc = subprocess.run(["arduino-cli", "board", "list", "--format", "json"], stdout=subprocess.PIPE)
             arduino_list = json.loads(proc.stdout)
             port = arduino_list[0]["port"]["address"]
             _logger.debug(f"Found Arduino port: {port}")
