@@ -18,16 +18,6 @@ _logger = logging.getLogger(__name__)
 GObject.threads_init()
 Gst.init(None)
 
-### TODO figure out how to re-incorporate the signal handling after the refactor
-### The issue is that KeyboardInterrupt breaks. And then a force term can prevent the
-### camera from shutting down, requiring "service nvargus-daemon restart"
-# main_loop = GObject.MainLoop()
-# def teardown_on_error(*args):
-#     main_loop.quit()
-#     sys.exit(2)
-# signal.signal(signal.SIGTERM, teardown_on_error)
-# signal.signal(signal.SIGINT, teardown_on_error)
-
 def append_intervideosink(pipeline, channel, sync=False):
     sync = {True: "true", False: "false"}[sync]
     return pipeline + " ! intervideosink channel={channel} sync={sync}".format(
