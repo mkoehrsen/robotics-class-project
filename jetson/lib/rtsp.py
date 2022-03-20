@@ -33,7 +33,7 @@ def create_video_channel_writer(channel, pipeline, fps, size_wh):
 class RtspServer(object):
 
     encoder_pipeline = "nvvidconv ! nvv4l2h264enc bitrate={bitrate} ! video/x-h264 ! rtph264pay name=pay0"
-    source_pipeline = "intervideosrc channel={channel}"
+    source_pipeline = "intervideosrc timeout={timeout} channel={channel}"
 
     def __init__(self, port):
         self.server = server = GstRtspServer.RTSPServer()
@@ -50,19 +50,18 @@ class RtspServer(object):
     def stop(self):
         self.loop.quit()
     
-    def mount_pipeline(self, path, pipeline, bitrate=int(3e6), latency=500):
+    def mount_pipeline(self, path, pipeline, bitrate=int(3e6)):
         pipeline += " ! " + self.encoder_pipeline.format(bitrate=bitrate)
         factory = GstRtspServer.RTSPMediaFactory()
         factory.set_launch(pipeline)
-        factory.set_latency(latency)
         factory.set_transport_mode(GstRtspServer.RTSPTransportMode.PLAY)
         print("Path", path, "mounting pipeline:", pipeline)
         self.mounts.add_factory(path, factory)
     
-    def mount_channel(self, path, bitrate=int(3e6), latency=500):
+    def mount_channel(self, path, bitrate=int(3e6), black_frame_timeout=60):
         channel = next(self.channels)
-        pipeline = self.source_pipeline.format(channel=channel)
-        self.mount_pipeline(path, pipeline, bitrate=bitrate, latency=latency)
+        pipeline = self.source_pipeline.format(channel=channel, timeout=black_frame_timeout * Gst.SECOND)
+        self.mount_pipeline(path, pipeline, bitrate=bitrate)
         return channel
 
 svr = RtspServer(8998)
