@@ -1,5 +1,14 @@
 # Forked from https://github.com/prabhakar-sivanesan/OpenCV-rtsp-server/blob/master/stream.py
 
+"""
+An RTSP server integrated with OpenCV.
+
+Basic use:
+
+server = RtspServer(8554)
+writer = server.mount_writer("/my_stream", 24, (640,480))
+"""
+
 import gi
 import cv2
 import logging
