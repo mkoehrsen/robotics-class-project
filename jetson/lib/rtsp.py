@@ -52,7 +52,8 @@ class RtspServer(object):
         self.channels = itertools.count()
     
     def start(self):
-        self.loop = loop = GObject.MainLoop()
+        # using GObject.MainLoop() breaks KeyboardInterrupt - using GObject.MainLoop.new(...) instead
+        self.loop = loop = GObject.MainLoop.new(None, False)
         self.server.attach(None)
         threading.Thread(target=loop.run, daemon=True).start()
         
