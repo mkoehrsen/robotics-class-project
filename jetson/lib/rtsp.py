@@ -167,28 +167,100 @@ class GstServer(GstRtspServer.RTSPServer):
 #     loop.run()
 
 import threading
+import signal
+import sys
 
 # this doc helps
 # https://lazka.github.io/pgi-docs/GstRtspServer-1.0/classes/RTSPMediaFactory.html#GstRtspServer.RTSPMediaFactory
 
+GObject.threads_init()
+Gst.init(None)
+
+main_loop = GObject.MainLoop()
+def teardown_on_error(*args):
+    main_loop.quit()
+    sys.exit(2)
+signal.signal(signal.SIGTERM, teardown_on_error)
+signal.signal(signal.SIGINT, teardown_on_error)
+
 def run_server():
     # imitating https://github.com/GStreamer/gst-rtsp-server/blob/master/examples/test-record.c
-    GObject.threads_init()
-    Gst.init(None)
     server = GstRtspServer.RTSPServer()
     server.set_service(str(DEFAULT_PORT))
     mounts = server.get_mount_points()
+
     factory = GstRtspServer.RTSPMediaFactory()
-    factory.set_launch("intervideosrc name=s1 ! videoconvert ! video/x-raw, format=BGRx ! nvvidconv ! nvv4l2h264enc bitrate=8000000 ! video/x-h264 ! rtph264pay name=pay0") # decodebin name=depay0 ! 
+#    factory.set_launch("intervideosrc channel=s1 ! videoconvert ! video/x-raw, format=BGRx ! nvvidconv ! nvv4l2h264enc bitrate=8000000 ! video/x-h264 ! rtph264pay name=pay0") # decodebin name=depay0 ! 
+    factory.set_launch("intervideosrc channel=s1 ! nvvidconv ! nvv4l2h264enc bitrate=8000000 ! video/x-h264 ! rtph264pay name=pay0") # decodebin name=depay0 ! 
     factory.set_latency(2000)
     factory.set_transport_mode(GstRtspServer.RTSPTransportMode.PLAY)
     mounts.add_factory(DEFAULT_PATH, factory)
+
+    factory = GstRtspServer.RTSPMediaFactory()
+    factory.set_launch("intervideosrc channel=s2 ! videoconvert ! video/x-raw, format=BGRx ! nvvidconv ! nvv4l2h264enc bitrate=8000000 ! video/x-h264 ! rtph264pay name=pay0") # decodebin name=depay0 ! 
+    factory.set_latency(2000)
+    factory.set_transport_mode(GstRtspServer.RTSPTransportMode.PLAY)
+    mounts.add_factory("/foo", factory)
+
     server.attach(None)
-    loop = GObject.MainLoop()
-    print("got loop")
-    loop.run()
+    main_loop.run()
 
 threading.Thread(target=run_server, daemon=True).start()
+
+import itertools
+
+def append_intervideosink(pipeline, channel, sync=False):
+    sync = {True: "true", False: "false"}[sync]
+    return pipeline + " ! intervideosink channel={channel} sync={sync}".format(
+        channel=channel,
+        sync=sync
+    )
+
+
+def create_video_channel_writer(channel, pipeline, fps, size_wh):
+    p = append_intervideosink(pipeline, channel)
+    print("VC Writer pipeline", p)
+    return cv2.VideoWriter(p, cv2.CAP_GSTREAMER, 0, fps, size_wh)
+#class VideoChannelWriter(cv2.VideoWriter):
+#    def __init__(self, channel, pipeline, fps, size_wh):
+#        pass
+        #p = append_intervideosink(pipeline, channel)
+        #print("generated", p)
+        #cv2.VideoWriter.__init__(p, cv2.CAP_GSTREAMER, 0, fps, size_wh)
+
+class RtspServer(object):
+
+    encoder_pipeline = "nvvidconv ! nvv4l2h264enc bitrate={bitrate} ! video/x-h264 ! rtph264pay name=pay0"
+    source_pipeline = "intervideosrc channel={channel}"
+
+    def __init__(self, port):
+        self.server = server = GstRtspServer.RTSPServer()
+        self.mounts = server.get_mount_points()
+        server.set_service(str(port))
+        self.channels = itertools.count()
+    
+    def start(self):
+        self.loop = loop = GObject.MainLoop()
+        self.server.attach(None)
+        threading.Thread(target=loop.run, daemon=True).start()
+        
+    def stop(self):
+        self.loop.quit()
+    
+    def mount_pipeline(self, path, pipeline, bitrate=int(3e6), latency=500):
+        pipeline += " ! " + self.encoder_pipeline.format(bitrate=bitrate)
+        factory = GstRtspServer.RTSPMediaFactory()
+        factory.set_launch(pipeline)
+        factory.set_latency(latency)
+        factory.set_transport_mode(GstRtspServer.RTSPTransportMode.PLAY)
+        print("Path", path, "mounting pipeline:", pipeline)
+        self.mounts.add_factory(path, factory)
+    
+    def mount_channel(self, path, bitrate=int(3e6), latency=500):
+        channel = next(self.channels)
+        pipeline = self.source_pipeline.format(channel=channel)
+        self.mount_pipeline(path, pipeline, bitrate=bitrate, latency=latency)
+        return channel
 
 #https://github.com/aler9/rtsp-simple-server#from-opencv
 """
@@ -214,8 +286,12 @@ p = """
     ! intervideosink
 """
 
-p = "appsrc is-live=true ! intervideosink sync=false name=s1"
+#p = "appsrc is-live=true ! intervideosink sync=false channel=s1"
+p = "appsrc is-live=true ! videoconvert ! video/x-raw, format=BGRx ! intervideosink sync=false channel=s1"
 w = cv2.VideoWriter(p, cv2.CAP_GSTREAMER, 0, 25, (640, 480), True)
+
+#w2 = cv2.VideoWriter("appsrc is-live=true ! intervideosink sync=false channel=s2", cv2.CAP_GSTREAMER, 0, 25, (640, 480), True)
+
 
 #'appsrc ! videoconvert' + \
 #    ' ! nvv4l2h264enc'
@@ -225,6 +301,14 @@ w = cv2.VideoWriter(p, cv2.CAP_GSTREAMER, 0, 25, (640, 480), True)
 #    '! intervideosink name=s1',
 #    cv2.CAP_GSTREAMER, 0, 25, (640, 480), True)
 
+svr = RtspServer(8998)
+print(svr)
+#svr.mount_pipeline("/santa", "nvarguscamerasrc ! video/x-raw(memory:NVMM), width=640, height=480, format=NV12, framerate=30/1")
+svr.start()
+chan = svr.mount_channel("/rudolph")
+
+w_new = create_video_channel_writer(chan, "appsrc is-live=true ! videoconvert ! video/x-raw, format=BGRx", 25, (640,480))
+
 cam_in = "nvarguscamerasrc ! video/x-raw(memory:NVMM), width=640, height=480, format=NV12, framerate=30/1 ! nvvidconv flip-method=0 ! video/x-raw, width=640, height=480, format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink"
 reader = cv2.VideoCapture(cam_in)
 
@@ -232,12 +316,14 @@ det = cv2.BRISK_create()
 while True:
     ret, frame = reader.read()
     assert ret, "Frame is %s" % frame
+#    w2.write(frame)
     kp, des = det.detectAndCompute(frame, None)
     #kp = []
     for k in kp:
         pt = tuple(int(round(x)) for x in k.pt)
         cv2.circle(frame, pt, 5, color=(0,0,255), thickness=2)
-    print("writing...")
+#    print("writing...")
     w.write(frame)
+    w_new.write(frame)
 #    w.write(np.zeros((640,480,3), np.uint8))
 #    time.sleep(0.1)
