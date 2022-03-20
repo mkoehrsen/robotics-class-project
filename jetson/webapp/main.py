@@ -1,7 +1,7 @@
 import flask
 import logging
 import motorctl
-import rtsp
+import rtsp2
 import threading
 
 logging.basicConfig(level=logging.DEBUG)
@@ -37,4 +37,4 @@ def update_state():
 
     return flask.make_response({"status": "OK"})
 
-threading.Thread(target=rtsp.run_server).start()
+threading.Thread(target=rtsp2.run_server).start()

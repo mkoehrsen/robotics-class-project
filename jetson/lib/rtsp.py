@@ -4,6 +4,10 @@ import gi
 import cv2
 import argparse
 import logging
+import numpy as np
+import time
+
+from vision import process_frame
 
 gi.require_version('Gst', '1.0')
 gi.require_version('GstRtspServer', '1.0')
@@ -30,7 +34,7 @@ class SensorFactory(GstRtspServer.RTSPMediaFactory):
         self.fps = 30
         self.duration = 1 / self.fps * Gst.SECOND  # duration of a frame in nanoseconds
         self.launch_string = 'appsrc name=source is-live=true block=true format=GST_FORMAT_TIME ' \
-                             'caps=video/x-raw,format=BGR,width=640,height=480,framerate={}/1 ' \
+                             'caps=video/x-raw,format=BGR,width=640,height=960,framerate={}/1 ' \
                              '! videoconvert ! video/x-raw,format=I420 ' \
                              '! x264enc speed-preset=ultrafast tune=zerolatency ' \
                              '! rtph264pay config-interval=1 name=pay0 pt=96' \
@@ -42,6 +46,7 @@ class SensorFactory(GstRtspServer.RTSPMediaFactory):
         if self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
+                frame = np.concatenate([frame, process_frame(frame)], 0)
                 data = frame.tostring()
                 buf = Gst.Buffer.new_allocate(None, len(data), None)
                 buf.fill(0, data)
@@ -54,6 +59,7 @@ class SensorFactory(GstRtspServer.RTSPMediaFactory):
                 _logger.debug('pushed buffer, frame {}, duration {} ns, durations {} s'.format(self.number_frames,
                                                                                        self.duration,
                                                                                        self.duration / Gst.SECOND))
+                # time.sleep(self.duration / Gst.SECOND)
                 if retval != Gst.FlowReturn.OK:
                     print(retval)
     # attach the launch string to the override method
