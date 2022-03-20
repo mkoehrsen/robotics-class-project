@@ -21,6 +21,6 @@ install:
 		-p `arduino-cli board list --format json | jq -r '.[0].port.address'`
 
 run:
-	flask run --host 0.0.0.0 --port 8080
+	flask run --host 0.0.0.0 --port 8080 --with-threads
 
 .PHONY: compile install run

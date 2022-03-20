@@ -138,9 +138,30 @@
         }
       }
 
+      function newImages(e) {
+        const obj = JSON.parse(e.data);
+
+        function setSrc(id, filename) {
+          if (filename) {
+            var imgElt = document.getElementById(id);
+            if (imgElt.complete) {
+              imgElt.src='/static/images/' + filename;
+            }
+          }
+        }
+
+        setSrc('img-raw', obj.raw_file);
+        setSrc('img-proc', obj.proc_file);
+        // console.log(e.data);
+      }
+
       document.onkeydown = keyDown;
       document.onkeyup = keyUp;
       sendState();
+
+      const sock = new WebSocket(
+        'ws://' + document.location.host + '/image-stream');
+      sock.addEventListener('message', newImages); 
     }
 
   </script>
@@ -179,6 +200,10 @@
             </table>
           </div>
         </div>
+      </div>
+      <div class="col-6">
+        <img id="img-raw">
+        <img id="img-proc">
       </div>
     </div>
   </div>
