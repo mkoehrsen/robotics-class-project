@@ -1,3 +1,4 @@
+import os
 import json
 import logging
 import pyfirmata
@@ -13,9 +14,7 @@ _logger = logging.getLogger(__name__)
 class MotorCtl(object):
     def __init__(self):
         try:
-            proc = subprocess.run(["arduino-cli", "board", "list", "--format", "json"], stdout=subprocess.PIPE)
-            arduino_list = json.loads(proc.stdout)
-            port = arduino_list[0]["port"]["address"]
+            port = os.environ["ARDUINO_PORT"]
             _logger.debug(f"Found Arduino port: {port}")
             self.board = pyfirmata.Arduino(port)
         except:
