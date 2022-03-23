@@ -1,6 +1,7 @@
 <html>
 
 <head>
+  <title>Robot App</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
 
@@ -66,7 +67,7 @@
 
         document.getElementById("cell-direction").innerHTML = currDir;
         document.getElementById("cell-throttle").innerHTML = throttle.toPrecision(2);
-        // document.getElementById("cell-camera").innerHTML = cameraOn ? "On": "Off";
+        document.getElementById("cell-camera").innerHTML = cameraOn ? "On": "Off";
 
         fetch("/state", {
           method: 'POST',
@@ -78,7 +79,17 @@
             direction: currDir,
             throttle: throttle.toPrecision(2),
             camera_on: cameraOn
-          })});
+          })})
+            .then((resp) => resp.json())
+            .then((body) => {
+              const listItems = body.video_files.map(
+                (videoFile) => {
+                  const url = `/videos/${videoFile}`;
+                  return `<li class="list-group-item"><a href="${url}">${videoFile}</a></li>`;
+                }
+              );
+              document.getElementById("video-list").innerHTML=listItems.join('');
+            });
       }
 
       function handleThrottle() {
@@ -157,8 +168,8 @@
     <div class="row">
       <div class="col-6">
         <div class="card">
+          <h5 class="card-header">Control Status</h5>
           <div class="card-body">
-            <h5 class="card-title">Control Status</h5>
             <table class="table">
               <tbody>
                 <tr>
@@ -169,15 +180,20 @@
                   <th scope="row">Throttle:</th><td id="cell-throttle"></td>
                   <td>Hold spacebar to increase, shift-space to reduce.</td>
                 </tr>
-                <!-- Toggle-camera doesn't actually do anything
                 <tr>
                   <th scope="row">Camera:</th><td id="cell-camera"></td>
                   <td>Use "c" key to toggle.</td>
                 </tr>
-                -->
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="card">
+          <h5 class="card-header">Videos</h5>
+          <ul id="video-list" class="list-group list-group-flush">
+          </ul>
         </div>
       </div>
     </div>
