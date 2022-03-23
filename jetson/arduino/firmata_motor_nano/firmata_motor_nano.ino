@@ -32,6 +32,11 @@ void sysexCallback(byte command, byte argc, byte *argv)
   analogWrite(PIN_RIGHT_PWM, rightSpeed);
   digitalWrite(PIN_RIGHT_FORWARD, rightDir == DIRECTION_FORWARD ? HIGH : LOW);
   digitalWrite(PIN_RIGHT_BACKWARD, rightDir == DIRECTION_BACKWARD ? HIGH : LOW);
+
+  // flash the light so we know a message was receied
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(50);
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void setup()

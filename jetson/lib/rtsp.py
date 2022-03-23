@@ -1,9 +1,19 @@
 # Forked from https://github.com/prabhakar-sivanesan/OpenCV-rtsp-server/blob/master/stream.py
 
+"""
+An RTSP server integrated with OpenCV.
+
+Basic use:
+
+server = RtspServer(8554)
+writer = server.mount_writer("/my_stream", 24, (640,480))
+"""
+
 import gi
 import cv2
-import argparse
 import logging
+import itertools
+import threading
 
 gi.require_version('Gst', '1.0')
 gi.require_version('GstRtspServer', '1.0')
@@ -11,76 +21,162 @@ from gi.repository import Gst, GstRtspServer, GObject
 
 _logger = logging.getLogger(__name__)
 
-DEFAULT_PORT=8554
-DEFAULT_PATH="/video_stream"
+GObject.threads_init()
+Gst.init(None)
 
-# Sensor Factory class which inherits the GstRtspServer base class and add
-# properties to it.
-class SensorFactory(GstRtspServer.RTSPMediaFactory):
-    def __init__(self, **properties):
-        super(SensorFactory, self).__init__(**properties)
+class RtspServer(object):
 
-        camera_pipeline = 'nvarguscamerasrc ! video/x-raw(memory:NVMM),width=640, height=480, ' \
-                          'format=NV12, framerate=30/1 ! nvvidconv flip-method=0 ! ' \
-                          'video/x-raw, width=640, height=480, format=BGRx ! videoconvert ! ' \
-                          'video/x-raw, format=BGR ! appsink'
+    encoder_pipeline = "nvvidconv ! nvv4l2h264enc bitrate={bitrate} ! video/x-h264 ! rtph264pay name=pay0"
+    source_pipeline = "intervideosrc timeout={timeout} channel={channel}"
 
-        self.cap = cv2.VideoCapture(camera_pipeline)
-        self.number_frames = 0
-        self.fps = 30
-        self.duration = 1 / self.fps * Gst.SECOND  # duration of a frame in nanoseconds
-        self.launch_string = 'appsrc name=source is-live=true block=true format=GST_FORMAT_TIME ' \
-                             'caps=video/x-raw,format=BGR,width=640,height=480,framerate={}/1 ' \
-                             '! videoconvert ! video/x-raw,format=I420 ' \
-                             '! x264enc speed-preset=ultrafast tune=zerolatency ' \
-                             '! rtph264pay config-interval=1 name=pay0 pt=96' \
-                             .format(self.fps)
-
-    # method to capture the video feed from the camera and push it to the
-    # streaming buffer.
-    def on_need_data(self, src, length):
-        if self.cap.isOpened():
-            ret, frame = self.cap.read()
-            if ret:
-                data = frame.tostring()
-                buf = Gst.Buffer.new_allocate(None, len(data), None)
-                buf.fill(0, data)
-                buf.duration = self.duration
-                timestamp = self.number_frames * self.duration
-                buf.pts = buf.dts = int(timestamp)
-                buf.offset = timestamp
-                self.number_frames += 1
-                retval = src.emit('push-buffer', buf)
-                _logger.debug('pushed buffer, frame {}, duration {} ns, durations {} s'.format(self.number_frames,
-                                                                                       self.duration,
-                                                                                       self.duration / Gst.SECOND))
-                if retval != Gst.FlowReturn.OK:
-                    print(retval)
-    # attach the launch string to the override method
-    def do_create_element(self, url):
-        return Gst.parse_launch(self.launch_string)
+    def __init__(self, port):
+        self.server = server = GstRtspServer.RTSPServer()
+        self.mounts = server.get_mount_points()
+        server.set_service(str(port))
+        self.channels = itertools.count()
     
-    # attaching the source element to the rtsp media
-    def do_configure(self, rtsp_media):
-        self.number_frames = 0
-        appsrc = rtsp_media.get_element().get_child_by_name('source')
-        appsrc.connect('need-data', self.on_need_data)
+    def start(self):
+        # using GObject.MainLoop() breaks KeyboardInterrupt - using GObject.MainLoop.new(...) instead
+        self.loop = loop = GObject.MainLoop.new(None, False)
+        self.server.attach(None)
+        threading.Thread(target=loop.run, daemon=True).start()
+        
+#     def stop(self):
+#         # TODO
+#         print("I was asked to stop")
+#         self.loop.quit()
+#         for path in self.paths:
+#             self.mounts.remove_factory(path)
+#         print("My loop quit")
+#         GObject.Source.remove(self.source_tag)
+#         print("removed tag")
+    
+    def mount_pipeline(self, path, pipeline, bitrate=int(3e6)):
+        pipeline += " ! " + self.encoder_pipeline.format(bitrate=bitrate)
+        factory = GstRtspServer.RTSPMediaFactory()
+        factory.set_launch(pipeline)
+        factory.set_transport_mode(GstRtspServer.RTSPTransportMode.PLAY)
+        self.mounts.add_factory(path, factory)
+    
+    def mount_channel(self, path, bitrate=int(3e6), black_frame_timeout=60):
+        channel = next(self.channels)
+        pipeline = self.source_pipeline.format(channel=channel, timeout=black_frame_timeout * Gst.SECOND)
+        self.mount_pipeline(path, pipeline, bitrate=bitrate)
+        return channel
+        
+    def mount_writer(self, path, fps, size_wh,
+            pipeline="appsrc is-live=true ! videoconvert ! video/x-raw, format=BGRx",
+            bitrate=int(3e6),
+            black_frame_timeout=60):
+        """
+        Convenience method to produce a cv2.VideoWriter bound to a streaming path.
+        The default pipeline should be fine in the common case.
+        """
+        channel = self.mount_channel(path, bitrate=bitrate, black_frame_timeout=60)
+        return create_video_channel_writer(channel, pipeline, fps, size_wh)
 
-# Rtsp server implementation where we attach the factory sensor with the stream uri
-class GstServer(GstRtspServer.RTSPServer):
-    def __init__(self, **properties):
-        super(GstServer, self).__init__(**properties)
-        self.factory = SensorFactory()
-        self.factory.set_shared(True)
-        self.set_service(str(DEFAULT_PORT))
-        self.get_mount_points().add_factory(DEFAULT_PATH, self.factory)
-        self.attach(None)
+def create_video_channel_writer(channel, pipeline, fps, size_wh):
+    """
+    Produce a cv2.VideoWriter bound to a channel of the RTSP server.
+    
+    Example:
+    channel = server.mount_channel("/file")
+    pipeline = "appsrc is-live=true ! videoconvert ! video/x-raw, format=BGRx"
+    writer = create_video_channel_writer(channel, pipeline, fps, size_wh)
+    """
+    p = append_intervideosink(pipeline, channel)
+    return cv2.VideoWriter(p, cv2.CAP_GSTREAMER, 0, fps, size_wh)
 
-# Entry point for running the rtsp server.
-# This should be on its own thread.
-def run_server():
-    GObject.threads_init()
-    Gst.init(None)
-    server = GstServer()
-    loop = GObject.MainLoop()
-    loop.run()
+def append_intervideosink(pipeline, channel, sync=False):
+    """
+    Add an intervideosink element to a pipeline in order to bind it to the RTSP server.
+    
+    Example:
+    channel = server.mount_channel("/file")
+    pipe = append_intervideosink("appsrc", channel)
+    """
+    sync = {True: "true", False: "false"}[sync]
+    return pipeline + " ! intervideosink channel={channel} sync={sync}".format(
+        channel=channel,
+        sync=sync
+    )
+
+if __name__ == "__main__":
+    import sys
+    import time
+    import datetime
+    import numpy as np
+    from collections import deque
+
+    port, synthetic_processing_time = sys.argv[1:]
+    synthetic_processing_time = float(synthetic_processing_time)
+    
+    server = RtspServer(int(port))
+    server.start()
+        
+    camera_pipeline = """
+        nvarguscamerasrc
+        ! video/x-raw(memory:NVMM), width=640, height=480, format=NV12, framerate=30/1
+        ! nvvidconv flip-method=0
+        ! video/x-raw, width=640, height=480, format=BGRx
+        ! videoconvert
+        ! video/x-raw, format=BGR
+        ! appsink drop=True max-buffers=1
+    """
+    camera = cv2.VideoCapture(camera_pipeline)
+
+    width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = camera.get(cv2.CAP_PROP_FPS)
+
+    raw_writer = server.mount_writer("/raw", fps, (width, height))
+    red_writer = server.mount_writer("/red", fps, (width, height))
+    blue_writer = server.mount_writer("/blue", fps, (width, height))
+    slow_writer = server.mount_writer("/slow", fps, (width, height))
+
+    paths = ["raw", "red", "blue", "slow"]
+    for path in paths:
+        print("Server listening at rtsp://localhost:%s/%s" % (port, path))
+
+    class BufEvent(threading.Event):
+        def __init__(self):
+            threading.Event.__init__(self)
+            self.buf = deque(maxlen=1)
+        def pop(self):
+            self.wait()
+            item = self.buf.pop()
+            self.clear()
+            return item
+        def push(self, item):
+            self.buf.append(item)
+            self.set()
+
+    def process_colors(buf_event):
+        while True:
+            frame = buf_event.pop()
+            red_writer.write(frame * np.uint8([0,0,1]))
+            blue_writer.write(frame * np.uint8([1,0,0]))
+            
+    def simulate_long_delay(buf_event):
+        while True:
+            frame = buf_event.pop()
+            stamp = lambda: datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S.%f")
+            before = stamp()
+            time.sleep(2)
+            after = stamp()
+            for (text, pos) in [(before, (50,50)), (after, (50,200))]:
+                cv2.putText(frame, text, pos, cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2, cv2.LINE_AA)
+            slow_writer.write(frame)
+
+    events = [BufEvent() for i in range(2)]
+    
+    threading.Thread(target=process_colors, args=[events[0]], daemon=True).start()
+    threading.Thread(target=simulate_long_delay, args=[events[1]], daemon=True).start()
+    
+    while True:
+        ret, frame = camera.read()
+        assert ret, "Error reading video."
+        time.sleep(synthetic_processing_time)
+        raw_writer.write(frame)
+        for event in events:
+            event.push(np.copy(frame))
