@@ -13,11 +13,15 @@
 #
 # I had some trouble with virtualenv and the system python so I stopped using it.
 
+ifeq ($(ARDUINO_BOARD),)
+  $(error ARDUINO_BOARD is not set. Examples: arduino:avr:nano, arduino:avr:nano:cpu=atmega328old)
+endif
+
 compile:
-	cd arduino/firmata_motor_nano; arduino-cli compile -b arduino:avr:nano
+	cd arduino/firmata_motor_nano; arduino-cli compile -b "$(ARDUINO_BOARD)"
 
 install:
-	cd arduino/firmata_motor_nano; arduino-cli compile -b arduino:avr:nano -u \
+	cd arduino/firmata_motor_nano; arduino-cli compile -b "$(ARDUINO_BOARD)" -u \
 		-p `arduino-cli board list --format json | jq -r '.[0].port.address'`
 
 run:
