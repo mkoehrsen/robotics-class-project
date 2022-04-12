@@ -1,6 +1,6 @@
 # Prerequisites (one-time install):
 #   arduino-cli core install arduino:avr
-#   arduino-cli lib install firmata
+#   arduino-cli lib install simpleRPC
 #
 # jq is used to extract the device name from arduino-cli output:
 #   sudo apt-get install -y jq
@@ -25,10 +25,10 @@ ARDUINO_PORT = $(eval ARDUINO_PORT := $$(shell \
 	))$(ARDUINO_PORT)
 
 compile:
-	arduino-cli compile arduino/firmata_motor_nano -b "$(ARDUINO_BOARD)"
+	arduino-cli compile arduino/rpc_motor -b "$(ARDUINO_BOARD)"
 
 install: compile
-	arduino-cli upload arduino/firmata_motor_nano -b "$(ARDUINO_BOARD)" -p "$(ARDUINO_PORT)"
+	arduino-cli upload arduino/rpc_motor -b "$(ARDUINO_BOARD)" -p "$(ARDUINO_PORT)"
 
 run:
 	FLASK_APP=webapp.main \

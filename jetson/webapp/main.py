@@ -1,18 +1,18 @@
 import flask
 import logging
-import motorctl
 import os
 import rtsp
 import subprocess
 import tempfile
 import threading
 import time
+import vehicle_rpc
 
 logging.basicConfig(level=logging.DEBUG)
 _logger = logging.getLogger(__name__)
 
 app = flask.Flask(__name__)
-motors = motorctl.MotorCtl()
+vehicle = vehicle_rpc.init_vehicle()
 capture_dir = tempfile.mkdtemp()
 capture_proc = None
 proc_lock = threading.Lock()
@@ -28,18 +28,19 @@ def update_state():
     direction = state["direction"]
     throttle = float(state["throttle"])
     camera_on = bool(state["camera_on"])
+    speed = max(0, min(int(throttle * 255), 255))
     if direction == "forward":
-        motors.set_speeds(throttle, throttle)
+        vehicle.forwardManual(speed)
     elif direction == "reverse":
-        motors.set_speeds(-throttle, -throttle)
+        vehicle.reverseManual(speed)
     elif direction == "left":
         # TODO -- scale back throttle for turning?
-        motors.set_speeds(-throttle, throttle)
+        vehicle.leftManual(speed)
     elif direction == "right":
         # TODO -- scale back throttle for turning?
-        motors.set_speeds(throttle, -throttle)
+        vehicle.rightManual(speed)
     else:
-        motors.set_speeds(0, 0)
+        vehicle.stopManual()
 
     with proc_lock:
         global capture_proc

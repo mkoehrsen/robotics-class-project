@@ -1,3 +1,2 @@
 Flask==2.0.3
-pyFirmata>=1.1.0
-#PyGobject>=3.42.0
+arduino-simple-rpc==2.4.2
