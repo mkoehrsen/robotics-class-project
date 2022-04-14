@@ -52,6 +52,7 @@ class _DummyVehicle:
     def __getattr__(self, attrname):
         def log(*args):
             _logger.debug(f"_DummyVehicle: {attrname}({', '.join(str(x) for x in args)})")
+            return (0, 0) 
         return log
 
 def init_vehicle():
@@ -87,4 +88,4 @@ def init_vehicle():
     )
 
     return vehicle
-    
+            
