@@ -6,13 +6,13 @@ import subprocess
 import tempfile
 import threading
 import time
-import vehicle_rpc
+import vehctl
 
 logging.basicConfig(level=logging.DEBUG)
 _logger = logging.getLogger(__name__)
 
 app = flask.Flask(__name__)
-vehicle = vehicle_rpc.init_vehicle()
+vehicle = vehctl.Vehicle()
 capture_dir = tempfile.mkdtemp()
 capture_proc = None
 proc_lock = threading.Lock()
@@ -29,19 +29,12 @@ def update_state():
     throttle = float(state["throttle"])
     camera_on = bool(state["camera_on"])
     speed = max(0, min(int(throttle * 255), 255))
-    if direction == "forward":
-        vehicle.forwardManual(speed)
-    elif direction == "reverse":
-        vehicle.reverseManual(speed)
-    elif direction == "left":
-        # TODO -- scale back throttle for turning?
-        vehicle.leftManual(speed)
-    elif direction == "right":
-        # TODO -- scale back throttle for turning?
-        vehicle.rightManual(speed)
+    if direction in ("forward", "reverse", "left", "right"):
+        # method names are the same as directions:
+        getattr(vehicle, direction)(speed)
     else:
-        vehicle.stopManual()
-
+        vehicle.stop()
+    
     with proc_lock:
         global capture_proc
         if camera_on and capture_proc is None:
@@ -61,6 +54,7 @@ def update_state():
 
     return flask.make_response({
         "status": "OK",
+        "pose_list": vehicle.pose_list(),
         "video_files": os.listdir(capture_dir)
     })
 

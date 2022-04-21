@@ -1,26 +1,17 @@
 #include <simpleRPC.h>
 #include "motor.h"
 
-typedef struct {
-  float wheelBase;   // Distance between wheels in mm
-  float wheelCircum; // Circumference of each wheel in mm
-  byte pwmMode;               // PWM_MODE_ENABLE or PWM_MODE_INPUT, defined in motor.h
-} VehicleConfig;
+byte PWM_MODE = PWM_MODE_ENABLE; // or PWM_MODE_INPUT, defined in motor.h
 
-// These structs must be configured through RPC calls
-VehicleConfig vehicleConfig;
+// Initialized using configureLeftMotor/configureRightMotor
 MotorControl leftControl;
 MotorControl rightControl;
 
 // RPC interface starts here
 
 // Config functions
-void configureVehicle(float wheelBase, float wheelCircum, byte pwmMode) {
-  vehicleConfig = {
-    wheelBase,
-    wheelCircum,
-    pwmMode
-  };
+void configureVehicle(byte pwmMode) {
+  PWM_MODE = pwmMode;
 }
 
 void configureLeftMotor(byte enablePin, byte forwardPin, byte reversePin, byte encoderPin) {
@@ -55,36 +46,36 @@ void configureRightMotor(byte enablePin, byte forwardPin, byte reversePin, byte 
 // since the last change in control.
 Object<int, int> forward(byte speed) {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
-  run_motor(&leftControl, vehicleConfig.pwmMode, DIR_FORWARD, speed);
-  run_motor(&rightControl, vehicleConfig.pwmMode, DIR_FORWARD, speed);
+  run_motor(&leftControl, PWM_MODE, DIR_FORWARD, speed);
+  run_motor(&rightControl, PWM_MODE, DIR_FORWARD, speed);
   return result;
 }
 
 void reverse(byte speed) {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
-  run_motor(&leftControl, vehicleConfig.pwmMode, DIR_REVERSE, speed);
-  run_motor(&rightControl, vehicleConfig.pwmMode, DIR_REVERSE, speed);
+  run_motor(&leftControl, PWM_MODE, DIR_REVERSE, speed);
+  run_motor(&rightControl, PWM_MODE, DIR_REVERSE, speed);
   return result;
 }
 
 void left(byte speed) {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
-  run_motor(&leftControl, vehicleConfig.pwmMode, DIR_REVERSE, speed);
-  run_motor(&rightControl, vehicleConfig.pwmMode, DIR_FORWARD, speed);
+  run_motor(&leftControl, PWM_MODE, DIR_REVERSE, speed);
+  run_motor(&rightControl, PWM_MODE, DIR_FORWARD, speed);
   return result;
 }
 
 void right(byte speed) {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
-  run_motor(&leftControl, vehicleConfig.pwmMode, DIR_FORWARD, speed);
-  run_motor(&rightControl, vehicleConfig.pwmMode, DIR_REVERSE, speed);
+  run_motor(&leftControl, PWM_MODE, DIR_FORWARD, speed);
+  run_motor(&rightControl, PWM_MODE, DIR_REVERSE, speed);
   return result;
 }
 
 void stop() {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
-  run_motor(&leftControl, vehicleConfig.pwmMode, DIR_STOP, 0);
-  run_motor(&rightControl, vehicleConfig.pwmMode, DIR_STOP, 0);
+  run_motor(&leftControl, PWM_MODE, DIR_STOP, 0);
+  run_motor(&rightControl, PWM_MODE, DIR_STOP, 0);
   return result;
 }
 
