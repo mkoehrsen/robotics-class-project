@@ -24,8 +24,12 @@
     const KEY_CODE_LEFT_ARROW = 37;
     const KEY_CODE_RIGHT_ARROW = 39;
 
-    // "C" will toggle camera on/off:
+    // "C" will toggle camera on/off
     const KEY_CODE_C = 67;
+
+    // "R" will reset pose
+    const KEY_CODE_R = 82;
+
 
     const THROTTLE_UPDATE_INTERVAL = 200;
 
@@ -45,6 +49,7 @@
       keyStates.set(KEY_CODE_LEFT_ARROW, false);
       keyStates.set(KEY_CODE_RIGHT_ARROW, false);
       keyStates.set(KEY_CODE_C, false);
+      keyStates.set(KEY_CODE_R, false);
 
       // Stack of directions based on order of key down events.
       // Values are "forward", "reverse", "left", "right"
@@ -89,7 +94,31 @@
                 }
               );
               document.getElementById("video-list").innerHTML=listItems.join('');
+              showPose(body.curr_pose);
             });
+      }
+
+      function resetPose() {
+        fetch("/reset", {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+      })
+        .then((resp) => resp.json())
+        .then((body) => showPose(body.curr_pose))
+      }
+
+      function showPose(currPose) {
+        document.getElementById("curr-pose").innerHTML=`
+              <pre>
+x: ${currPose.x}
+y: ${currPose.y}
+&theta;: ${currPose.theta}
+              </pre>
+              `;
+
       }
 
       function handleThrottle() {
@@ -106,7 +135,9 @@
       }
 
       function update(keyCode) {
-        if (directionKeys.get(keyCode) != null) {
+        if (keyCode == KEY_CODE_R) {
+          resetPose();
+        } else if (directionKeys.get(keyCode) != null) {
           var dir = directionKeys.get(keyCode);
 
           // Unconditionally remove direction if present, then
@@ -116,8 +147,7 @@
           if (keyStates.get(keyCode)) {
             dirStack.push(dir);
           }
-        } 
-        else if (keyCode == KEY_CODE_C && keyStates.get(keyCode)) {
+        } else if (keyCode == KEY_CODE_C && keyStates.get(keyCode)) {
           cameraOn = !cameraOn;
         } else if (keyCode == KEY_CODE_SHIFT || keyCode == KEY_CODE_SPACEBAR) {
           if (throttleTimeoutId != null) {
@@ -182,7 +212,11 @@
                 </tr>
                 <tr>
                   <th scope="row">Camera:</th><td id="cell-camera"></td>
-                  <td>Use "c" key to toggle.</td>
+                  <td>Use "c" key to start capturing video, "c" again to stop.</td>
+                </tr>
+                <tr>
+                  <th scope="row">Current Pose:</th><td id="curr-pose"></td>
+                  <td>Use "r" key to reset pose.</td>
                 </tr>
               </tbody>
             </table>

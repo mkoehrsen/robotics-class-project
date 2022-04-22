@@ -16,28 +16,23 @@
 #define DIR_FORWARD 1
 #define DIR_REVERSE 2
 
-// Pin configuration for a motor/encoder pair. Should be self-explanatory.
-// Named MotorControl because when we turn it into a class it will look 
-// more like a proxy to the motor.
+// Number of consistent reads from encoder before we believe it
+#define ENCODER_MIN_COUNT 5
+
+// Pin configuration and state of a motor/encoder pair. 
 typedef struct {
+  // These are one-time configuration, passed from jetson at startup
   byte enablePin;
   byte forwardPin;
   byte reversePin;
   byte encoderPin;
-} MotorControl;
 
-// Initialize pins associated with a MotorConfig.
-void setup_motor_pins(MotorControl *ctl);
+  // Remaining attributes are used to interpret encoder readings
 
-// Set direction and speed of a motor.
-// 0 for either direction or speed will stop.
-void run_motor(MotorControl* ctl, byte pwmMode, byte direction, byte speed);
+  // Current direction of motor, or DIR_STOP. We need this
+  // because we can't observe rotation direction from the encoders.
+  byte direction;
 
-// Number of consistent reads from encoder before we believe it
-#define ENCODER_MIN_COUNT 5
-
-// Encoder state.
-typedef struct {
   // stablePinState is the state in which we have last seen the encoder pin
   // ENCODER_MIN_COUNT times consecutively.
   byte stablePinState;
@@ -49,12 +44,24 @@ typedef struct {
   // number of times we've observed lastPinState sequentially
   unsigned short pinStateCount;
 
-  // number of low-to-high transitions we've seen since
-  // startup. unsigned int might be overkill here but whatever
-  unsigned int transitionCount;
-} EncoderState;
+  // Count of low-to-high transitions we've seen since last reset.
+  // This is a signed value, i.e. if the direction is reverse then this
+  // will be negative.
+  int transitionCount;
+
+} MotorControl;
+
+// Initialize pins associated with a MotorConfig.
+void setup_motor_pins(MotorControl *ctl);
+
+// Set direction and speed of a motor.
+// 0 for either direction or speed will stop.
+void run_motor(MotorControl* ctl, byte pwmMode, byte direction, byte speed);
 
 // Update encoder state based on a single observation of the encoder pin.
-void update_encoder_state(EncoderState *st, byte pinState);
+void update_encoder_state(MotorControl *ctl, byte pinState);
+
+// Set transition count back to zero and return previous (signed) transition count.
+int reset_transitions(MotorControl *ctl);
 
 #endif

@@ -30,10 +30,13 @@ compile:
 install: compile
 	arduino-cli upload arduino/rpc_motor -b "$(ARDUINO_BOARD)" -p "$(ARDUINO_PORT)"
 
+test:
+	python3 -m pytest test
+
 run:
 	FLASK_APP=webapp.main \
 	PYTHONPATH="$PYTHONPATH:$(PWD)/lib" \
 	ARDUINO_PORT="$(ARDUINO_PORT)" \
 	flask run --host 0.0.0.0 --port 8080
 
-.PHONY: compile install run
+.PHONY: compile install run test
