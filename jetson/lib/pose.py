@@ -1,5 +1,8 @@
 from dataclasses import dataclass
+import logging
 import math
+
+logger = logging.getLogger(__name__)
 
 def reduce_angle(theta):
     """
@@ -52,9 +55,15 @@ def pose_from_wheel_distances(left, right, wheel_base, tol=.001):
     Not sure if it's a real concern but I want to avoid weird numeric 
     problems due to differences being very close to zero.
     """
+    logger.debug(f"pose_from_wheel_distances({left}, {right}, {wheel_base}, {tol})")
+
     if abs(left - right) <= tol:
         # Simple special case, we get division by zero otherwise
         return Pose2D(left, 0.0, 0.0)
+    elif right == 0.0:
+        # If right is zero then we get division by zero when computing theta.
+        # In this case swap left and right and mirror the result.
+        return pose_from_wheel_distances(right, left, wheel_base, tol).mirrorX()
     else:
         # With w == wheel_base, take wheels to have started at positions
         # leftpos = (0, w/2) and rightpos (0, -w/2), so the center point
@@ -80,6 +89,3 @@ def pose_from_wheel_distances(left, right, wheel_base, tol=.001):
         return Pose2D(x, y, reduce_angle(theta))
 
 
-if __name__ == "__main__":
-    import doctest
-    doctest.testmod()

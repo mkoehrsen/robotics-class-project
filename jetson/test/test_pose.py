@@ -81,12 +81,37 @@ def test_pose_addition():
         Pose2D(1.0 + 1/math.sqrt(2), -1/math.sqrt(2), 0.0),
     )
 
+def test_pose_from_dist_zero_pose():
+    assert_equal_pose(
+        pose_from_wheel_distances(0.0, 0.0, 1.0),
+        Pose2D(0.0, 0.0, 0.0))
+
 def test_pose_from_dist_straight_ahead():
     # Straight ahead
     assert_equal_pose(
         pose_from_wheel_distances(1.0, 1.0, 1.0),
         Pose2D(1.0, 0.0, 0.0))
-    
+
+def test_pose_from_dist_one_wheel():
+    # One wheel stationary, the other moving. Had a divide-by-zero
+    # bug for this case so this is a regression test.
+    assert_equal_pose(
+        pose_from_wheel_distances(0.0, math.pi, 2.0),
+        Pose2D(1.0, 1.0, math.pi/2))
+
+    assert_equal_pose(
+        pose_from_wheel_distances(0.0, -math.pi, 2.0),
+        Pose2D(-1.0, 1.0, -math.pi/2))
+
+    assert_equal_pose(
+        pose_from_wheel_distances(math.pi, 0.0, 2.0),
+        Pose2D(1.0, -1.0, -math.pi/2))
+
+    assert_equal_pose(
+        pose_from_wheel_distances(-math.pi, 0.0, 2.0),
+        Pose2D(-1.0, -1.0, math.pi/2))
+
+
 def test_pose_from_dist_turn_in_place():
     # Rotate full-turn in place to right
     assert_equal_pose(

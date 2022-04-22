@@ -57,6 +57,15 @@ def update_state():
         "video_files": os.listdir(capture_dir)
     })
 
+@app.route("/reset/", methods=["POST"])
+def reset():
+    vehicle.reset()
+    return flask.make_response({
+        "status": "OK",
+        "curr_pose": vehicle.curr_pose.to_json_obj(),
+        "video_files": os.listdir(capture_dir)
+    })
+
 @app.route("/videos/<filename>")
 def download_video(filename):
     return flask.send_file(os.path.join(capture_dir, filename), as_attachment=True)

@@ -51,28 +51,28 @@ Object<int, int> forward(byte speed) {
   return result;
 }
 
-void reverse(byte speed) {
+Object<int, int> reverse(byte speed) {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
   run_motor(&leftControl, PWM_MODE, DIR_REVERSE, speed);
   run_motor(&rightControl, PWM_MODE, DIR_REVERSE, speed);
   return result;
 }
 
-void left(byte speed) {
+Object<int, int> left(byte speed) {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
   run_motor(&leftControl, PWM_MODE, DIR_REVERSE, speed);
   run_motor(&rightControl, PWM_MODE, DIR_FORWARD, speed);
   return result;
 }
 
-void right(byte speed) {
+Object<int, int> right(byte speed) {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
   run_motor(&leftControl, PWM_MODE, DIR_FORWARD, speed);
   run_motor(&rightControl, PWM_MODE, DIR_REVERSE, speed);
   return result;
 }
 
-void stop() {
+Object<int, int> stop() {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
   run_motor(&leftControl, PWM_MODE, DIR_STOP, 0);
   run_motor(&rightControl, PWM_MODE, DIR_STOP, 0);

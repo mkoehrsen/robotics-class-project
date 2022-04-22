@@ -129,3 +129,7 @@ class Vehicle:
 
     def stop(self):
         self._update_pos(*self.interface.stop())
+    
+    def reset(self):
+        self.interface.stop()
+        self.pose_hist = [Pose2D()]
