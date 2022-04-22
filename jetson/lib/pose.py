@@ -33,6 +33,12 @@ class Pose2D:
         Return a pose that is the result of mirroring self about the X axis.
         """
         return Pose2D(self.x, -self.y, -self.theta)
+    
+    def to_json_obj(self):
+        """
+        Return a json-serializable representation of this object.
+        """
+        return dict(x=self.x, y=self.y, theta=self.theta)
 
 def pose_from_wheel_distances(left, right, wheel_base, tol=.001):
     """

@@ -51,10 +51,26 @@ CONFIGS = {
 }
 
 class _DummyInterface:
+    def __init__(self):
+        self.last_dir = 'stop'
+
     def __getattr__(self, attrname):
         def log(*args):
             _logger.debug(f"_DummyVehicle: {attrname}({', '.join(str(x) for x in args)})")
-            return (0, 0) 
+
+            result = (0, 0)
+            if self.last_dir == 'forward':
+                result = (30, 30)
+            elif self.last_dir == 'reverse':
+                result = (-30, -30)
+            elif self.last_dir == 'left':
+                result = (-10, 10)
+            elif self.last_dir == 'right':
+                result = (10, -10)
+            
+            self.last_dir = attrname
+            return result
+            
         return log
 
 class Vehicle:

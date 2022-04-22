@@ -89,6 +89,13 @@
                 }
               );
               document.getElementById("video-list").innerHTML=listItems.join('');
+              document.getElementById("curr-pose").innerHTML=`
+              <pre>
+x: ${body.curr_pose.x}
+y: ${body.curr_pose.y}
+&theta;: ${body.curr_pose.theta}
+              </pre>
+              `;
             });
       }
 
@@ -182,7 +189,11 @@
                 </tr>
                 <tr>
                   <th scope="row">Camera:</th><td id="cell-camera"></td>
-                  <td>Use "c" key to toggle.</td>
+                  <td>Use "c" key to start capturing video, "c" again to stop.</td>
+                </tr>
+                <tr>
+                  <th scope="row">Current Pose:</th><td id="curr-pose"></td>
+                  <td></td>
                 </tr>
               </tbody>
             </table>

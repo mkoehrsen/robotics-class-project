@@ -1,7 +1,6 @@
 import flask
 import logging
 import os
-import rtsp
 import subprocess
 import tempfile
 import threading
@@ -54,7 +53,7 @@ def update_state():
 
     return flask.make_response({
         "status": "OK",
-        "pose_list": vehicle.pose_list(),
+        "curr_pose": vehicle.curr_pose.to_json_obj(),
         "video_files": os.listdir(capture_dir)
     })
 
