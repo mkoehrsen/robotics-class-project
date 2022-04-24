@@ -20,7 +20,8 @@ Calibration protocol:
 - Create a CalibrationSession with appropriate orientation and with the measured panel distance, and
   invoke calibrate(). Unless no tags are detected at all the calibration session will 
 """
-CALIBRATION_DIR = os.path.join(os.environ['HOME'], '.robot', 'calibration')
+CALIBRATION_DIR = os.path.join(os.environ["HOME"], ".robot", "calibration")
+
 
 def flatten_rects(rects):
     """
@@ -88,7 +89,7 @@ class TagsNotDetectedException(Exception):
 
 
 class CalibrationSession(object):
-    def __init__(self, panel_dist, desired_tags=3, max_tries=3):
+    def __init__(self, panel_dist, orientation=0, desired_tags=3, max_tries=3):
         self.tmpdir = tempfile.mkdtemp()
 
         self.at_detector = dt_apriltags.Detector(
@@ -103,6 +104,7 @@ class CalibrationSession(object):
         )
 
         self.panel_dist = panel_dist
+        self.orientation = orientation
         self.desired_tags = desired_tags
         self.max_tries = max_tries
 
@@ -115,7 +117,7 @@ class CalibrationSession(object):
                 "nvgstcapture",
                 "-m",
                 "1",
-                "--orientation=2",  # Invert image
+                f"--orientation={self.orientation}",
                 "-A",
                 "--capture-auto=1",
                 "--file-name",
@@ -148,12 +150,10 @@ class CalibrationSession(object):
                 best_tags = tags
                 best_img = img
 
-            if len(best_tags) < self.desired_tags:
-                if remaining_tries == 0:
-                    if len(best_tags) == 0:
-                        raise TagsNotDetectedException
-
             remaining_tries -= 1
+
+        if len(best_tags) == 0:
+            raise TagsNotDetectedException
 
         self.input_img = best_img
         self.input_tags = best_tags
@@ -193,29 +193,40 @@ class CalibrationSession(object):
     def input_tag_ids(self):
         return [t.tag_id for t in self.input_tags]
 
+
 def write_calibration(hmat, input_img, calibrated_img):
-    cv2.imwrite(os.path.join(CALIBRATION_DIR, "input.png"), input_img[:,:,::-1])
-    cv2.imwrite(os.path.join(CALIBRATION_DIR, "calibrated.png"), calibrated_img[:,:,::-1])
+    cv2.imwrite(os.path.join(CALIBRATION_DIR, "input.png"), input_img[:, :, ::-1])
+    cv2.imwrite(
+        os.path.join(CALIBRATION_DIR, "calibrated.png"), calibrated_img[:, :, ::-1]
+    )
     with open(os.path.join(CALIBRATION_DIR, "hmat.json"), "wt") as f:
         # TODO might lose some precision on dump/load?
         json.dump(list(hmat.reshape((9,))), f)
 
+
 def read_calibration():
     with open(os.path.join(CALIBRATION_DIR, "hmat.json"), "rt") as f:
         return (
-            np.array(json.load(f)).reshape((3,3)),
+            np.array(json.load(f)).reshape((3, 3)),
             cv2.imread(os.path.join(CALIBRATION_DIR, "input.png")),
-            cv2.imread(os.path.join(CALIBRATION_DIR, "calibrated.png"))
+            cv2.imread(os.path.join(CALIBRATION_DIR, "calibrated.png")),
         )
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("panel_dist", type=float)
     parser.add_argument("--desired-tags", type=int, default=3)
     parser.add_argument("--max-tries", type=int, default=3)
+    parser.add_argument("--orientation", type=int, default=0)
     args = parser.parse_args()
 
-    sess = CalibrationSession(panel_dist=args.panel_dist, desired_tags=args.desired_tags, max_tries=args.max_tries)
+    sess = CalibrationSession(
+        panel_dist=args.panel_dist,
+        orientation=args.orientation,
+        desired_tags=args.desired_tags,
+        max_tries=args.max_tries,
+    )
     sess.calibrate()
 
     sys.stderr.write(f"Used tags {sess.input_tag_ids} to calibrate.\n")
@@ -223,12 +234,14 @@ def main():
 
     if os.path.exists(CALIBRATION_DIR):
         import datetime
+
         backup_dir = CALIBRATION_DIR + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         sys.stderr.write(f"Backing up old calibration directory to {backup_dir}.\n")
         os.rename(CALIBRATION_DIR, backup_dir)
     os.makedirs(CALIBRATION_DIR)
 
     write_calibration(sess.world_hmat, sess.input_img, sess.calibrated_img)
+
 
 if __name__ == "__main__":
     main()
