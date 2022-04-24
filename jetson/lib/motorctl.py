@@ -11,6 +11,7 @@ DIRECTION_BACKWARD = 2
 
 _logger = logging.getLogger(__name__)
 
+
 class MotorCtl(object):
     def __init__(self):
         try:
@@ -18,7 +19,10 @@ class MotorCtl(object):
             _logger.debug(f"Found Arduino port: {port}")
             self.board = pyfirmata.Arduino(port)
         except:
-            _logger.warning("Can't connect to Arduino, MotorCtl will run in dummy mode.", exc_info=True)
+            _logger.warning(
+                "Can't connect to Arduino, MotorCtl will run in dummy mode.",
+                exc_info=True,
+            )
             self.board = None
 
     def set_speeds(self, left, right):
@@ -44,6 +48,4 @@ class MotorCtl(object):
         sysex_args = [direction(left), speed(left), direction(right), speed(right)]
         _logger.debug(f"send_sysex(0, {sysex_args})")
         if self.board is not None:
-            self.board.send_sysex(
-                0, sysex_args
-            )
+            self.board.send_sysex(0, sysex_args)
