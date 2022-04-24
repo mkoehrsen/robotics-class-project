@@ -2,10 +2,12 @@ import argparse
 import cv2
 import dt_apriltags
 import enum
+import json
 import logging
 import numpy as np
 import os
 import subprocess
+import sys
 import tempfile
 
 """
@@ -18,7 +20,7 @@ Calibration protocol:
 - Create a CalibrationSession with appropriate orientation and with the measured panel distance, and
   invoke calibrate(). Unless no tags are detected at all the calibration session will 
 """
-
+CALIBRATION_DIR = os.path.join(os.environ['HOME'], '.robot', 'calibration')
 
 def flatten_rects(rects):
     """
@@ -187,10 +189,46 @@ class CalibrationSession(object):
             - self.det_corners_world
         )
 
+    @property
+    def input_tag_ids(self):
+        return [t.tag_id for t in self.input_tags]
+
+def write_calibration(hmat, input_img, calibrated_img):
+    cv2.imwrite(os.path.join(CALIBRATION_DIR, "input.png"), input_img[:,:,::-1])
+    cv2.imwrite(os.path.join(CALIBRATION_DIR, "calibrated.png"), calibrated_img[:,:,::-1])
+    with open(os.path.join(CALIBRATION_DIR, "hmat.json"), "wt") as f:
+        # TODO might lose some precision on dump/load?
+        json.dump(list(hmat.reshape((9,))), f)
+
+def read_calibration():
+    with open(os.path.join(CALIBRATION_DIR, "hmat.json"), "rt") as f:
+        return (
+            np.array(json.load(f)).reshape((3,3)),
+            cv2.imread(os.path.join(CALIBRATION_DIR, "input.png")),
+            cv2.imread(os.path.join(CALIBRATION_DIR, "calibrated.png"))
+        )
 
 def main():
-    pass
+    parser = argparse.ArgumentParser()
+    parser.add_argument("panel_dist", type=float)
+    parser.add_argument("--desired-tags", type=int, default=3)
+    parser.add_argument("--max-tries", type=int, default=3)
+    args = parser.parse_args()
 
+    sess = CalibrationSession(panel_dist=args.panel_dist, desired_tags=args.desired_tags, max_tries=args.max_tries)
+    sess.calibrate()
+
+    sys.stderr.write(f"Used tags {sess.input_tag_ids} to calibrate.\n")
+    sys.stderr.write(f"Error vector is:\n{sess.error}\n")
+
+    if os.path.exists(CALIBRATION_DIR):
+        import datetime
+        backup_dir = CALIBRATION_DIR + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        sys.stderr.write(f"Backing up old calibration directory to {backup_dir}.\n")
+        os.rename(CALIBRATION_DIR, backup_dir)
+    os.makedirs(CALIBRATION_DIR)
+
+    write_calibration(sess.world_hmat, sess.input_img, sess.calibrated_img)
 
 if __name__ == "__main__":
     main()
