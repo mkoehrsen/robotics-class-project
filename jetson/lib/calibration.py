@@ -60,14 +60,30 @@ def get_tag_rects_world(panel_dist):
     return [ctr2rect(ctr) for ctr in centers]
 
 
-def get_tag_rects_calibrated_panel_img():
-    # Map tag rects from world coordinates into a frame suitable
-    # for visualizing the homography transform
-    # panel is 28" wide by 22" high, make it 560 x 440 (20 ppi)
-    def transform_point(pt):
-        return (pt[0] + 14) * 20, (22 - pt[1]) * 20
+def deskew(img, hmat, output_size, output_ppi=20, output_y_offset=20):
+    """
+    Uses a calibrated homography matrix to de-skew an image taken
+    by the vehicle.
 
-    return [[transform_point(p) for p in rect] for rect in get_tag_rects_world(-11)]
+    - img: input image from the vehicle
+    - hmat: homography matrix representing transform from image coordinates to vehicle coordinates.
+    - output_size: pair of (width, height) of desired output in pixels, as a list or tuple.
+    - output_ppi: number of pixels in the output representation that represent one inch in the world.
+    - output_y_offset: distance in inches from the vehicle origin to the bottom of the output image.
+    """
+    world2output = np.array(
+        [
+            [float(output_ppi), 0.0, output_size[0] / 2],
+            [
+                0.0,
+                -float(output_ppi),
+                float(output_y_offset * output_ppi + output_size[1]),
+            ],
+            [0.0, 0.0, 1.0],
+        ]
+    )
+    deskew_mat = np.matmul(world2output, hmat)
+    return cv2.warpPerspective(img, deskew_mat, output_size, flags=cv2.INTER_LINEAR)
 
 
 def apply_homography(hmat, points):
@@ -76,8 +92,12 @@ def apply_homography(hmat, points):
     (e.g. detected corners of tags).  This is weirdly fussy, steps are:
     - Extend points to have 1s as the third element.
     - Perform the matrix multiplication.
-    - Scale the points based on the third coordinate. (This is the part I don't understand).
+    - Scale the points based on the third coordinate.
     """
+    # Note -- it turns out the function cv2.perspectiveTransform also does this operation.
+    # The following gives the same result other than some small numeric differences.
+    # cv2.perspectiveTransform(points.reshape(1,len(points),2), hmat).reshape(len(points),2)
+
     points = np.concatenate([points, np.ones((points.shape[0], 1))], axis=1)
     pred_raw = np.matmul(hmat, points.transpose()).transpose()
     pred, scale = np.split(pred_raw, [2], axis=1)
@@ -159,13 +179,9 @@ class CalibrationSession(object):
         self.input_tags = best_tags
 
         all_tag_rects_world = get_tag_rects_world(self.panel_dist)
-        all_tag_rects_cal_img = get_tag_rects_calibrated_panel_img()
 
         self.det_corners_world = np.array(
             flatten_rects(all_tag_rects_world[t.tag_id] for t in best_tags)
-        )
-        self.det_corners_cal_img = np.array(
-            flatten_rects(all_tag_rects_cal_img[t.tag_id] for t in best_tags)
         )
         self.det_corners_input_img = np.array(
             flatten_rects(list(t.corners) for t in best_tags)
@@ -174,12 +190,12 @@ class CalibrationSession(object):
         self.world_hmat, _ = cv2.findHomography(
             self.det_corners_input_img, self.det_corners_world
         )
-        self.cal_img_hmat, _ = cv2.findHomography(
-            self.det_corners_input_img, self.det_corners_cal_img
-        )
-
-        self.calibrated_img = cv2.warpPerspective(
-            self.input_img, self.cal_img_hmat, (560, 440), flags=cv2.INTER_LINEAR
+        self.calibrated_img = deskew(
+            self.input_img,
+            self.world_hmat,
+            (560, 440),
+            output_ppi=20,
+            output_y_offset=self.panel_dist + 11.0,
         )
 
     @property
