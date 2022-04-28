@@ -14,7 +14,6 @@ void setup_motor_pins(MotorControl *ctl) {
 }
 
 void run_motor(MotorControl* ctl, byte pwmMode, byte direction, byte speed) {
-  ctl->direction = direction;
 
   if ((direction != DIR_FORWARD && direction != DIR_REVERSE) || speed == 0) {
     digitalWrite(ctl->reversePin, LOW);
@@ -38,6 +37,10 @@ void run_motor(MotorControl* ctl, byte pwmMode, byte direction, byte speed) {
       analogWrite(ctl->reversePin, speed);
     }
   }
+
+  if (direction == DIR_FORWARD || direction == DIR_REVERSE) {
+    ctl->lastDirection = direction;
+  }
 }
 
 void update_encoder_state(MotorControl* ctl, byte pinState) {
@@ -52,9 +55,9 @@ void update_encoder_state(MotorControl* ctl, byte pinState) {
     ctl->stablePinState = pinState;
     if (pinState == HIGH) {
       // Count rising edges, sign of count depends on direction.
-      if (ctl->direction == DIR_FORWARD) {
+      if (ctl->lastDirection == DIR_FORWARD) {
         ctl->transitionCount++;
-      } else {
+      } else if (ctl->lastDirection == DIR_REVERSE) {
         ctl->transitionCount--;
       }
     }

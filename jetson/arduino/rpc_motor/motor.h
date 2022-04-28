@@ -29,9 +29,9 @@ typedef struct {
 
   // Remaining attributes are used to interpret encoder readings
 
-  // Current direction of motor, or DIR_STOP. We need this
-  // because we can't observe rotation direction from the encoders.
-  byte direction;
+  // Last direction sent to motor. Needed because we can't observe 
+  // rotation direction from the encoders.
+  byte lastDirection;
 
   // stablePinState is the state in which we have last seen the encoder pin
   // ENCODER_MIN_COUNT times consecutively.
