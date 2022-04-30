@@ -127,7 +127,7 @@ def main():
         help="Number of columns of tags per page.",
     )
     parser.add_argument(
-        "-r", "--rows", type=int, default=1, help="Number of rows of tags per page."
+        "-r", "--rows", type=int, default=2, help="Number of rows of tags per page."
     )
     parser.add_argument(
         "--repeat",
