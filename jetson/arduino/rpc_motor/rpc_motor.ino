@@ -1,11 +1,15 @@
 #include <simpleRPC.h>
 #include "motor.h"
+#include "nav_action.h"
 
 byte PWM_MODE = PWM_MODE_ENABLE; // or PWM_MODE_INPUT, defined in motor.h
 
 // Initialized using configureLeftMotor/configureRightMotor
 MotorControl leftControl;
 MotorControl rightControl;
+
+// Single NavAction instance is used as needed.
+NavAction navAction;
 
 // RPC interface starts here
 
@@ -20,7 +24,7 @@ void configureLeftMotor(byte enablePin, byte forwardPin, byte reversePin, byte e
     forwardPin,
     reversePin,
     encoderPin,
-    DIR_STOP,
+    PWM_MODE,
     LOW,
     LOW,
     0,
@@ -34,7 +38,7 @@ void configureRightMotor(byte enablePin, byte forwardPin, byte reversePin, byte 
     forwardPin,
     reversePin,
     encoderPin,
-    DIR_STOP,
+    PWM_MODE,
     LOW,
     LOW,
     0,
@@ -46,36 +50,50 @@ void configureRightMotor(byte enablePin, byte forwardPin, byte reversePin, byte 
 // since the last change in control.
 Object<int, int> forward(byte speed) {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
-  run_motor(&leftControl, PWM_MODE, DIR_FORWARD, speed);
-  run_motor(&rightControl, PWM_MODE, DIR_FORWARD, speed);
+  run_motor(&leftControl, speed);
+  run_motor(&rightControl, speed);
   return result;
 }
 
 Object<int, int> reverse(byte speed) {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
-  run_motor(&leftControl, PWM_MODE, DIR_REVERSE, speed);
-  run_motor(&rightControl, PWM_MODE, DIR_REVERSE, speed);
+  run_motor(&leftControl, -speed);
+  run_motor(&rightControl, -speed);
   return result;
 }
 
 Object<int, int> left(byte speed) {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
-  run_motor(&leftControl, PWM_MODE, DIR_REVERSE, speed);
-  run_motor(&rightControl, PWM_MODE, DIR_FORWARD, speed);
+  run_motor(&leftControl, -speed);
+  run_motor(&rightControl, speed);
   return result;
 }
 
 Object<int, int> right(byte speed) {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
-  run_motor(&leftControl, PWM_MODE, DIR_FORWARD, speed);
-  run_motor(&rightControl, PWM_MODE, DIR_REVERSE, speed);
+  run_motor(&leftControl, speed);
+  run_motor(&rightControl, -speed);
   return result;
 }
 
 Object<int, int> stop() {
   Object<int, int> result(reset_transitions(&leftControl), reset_transitions(&rightControl));
-  run_motor(&leftControl, PWM_MODE, DIR_STOP, 0);
-  run_motor(&rightControl, PWM_MODE, DIR_STOP, 0);
+  run_motor(&leftControl, 0);
+  run_motor(&rightControl, 0);
+  return result;
+}
+
+void actionStart(byte actionType, int transitions) {
+  navAction.leftMotor = &leftControl;
+  navAction.rightMotor = &rightControl;
+  start_action(&navAction, actionType, transitions);
+}
+
+Object<int, int, int, int, int>actionStatus() {
+  Object<int, int, int, int, int>
+    result(navAction.state, 
+           navAction.leftTransitions, navAction.leftSpeed, 
+           navAction.rightTransitions, navAction.rightSpeed);
   return result;
 }
 
@@ -97,11 +115,14 @@ void loop() {
     reverse, F("reverse: Run motors in reverse."),
     right, F("right: Rotate to right."),
     left, F("left: Rotate to left."),
-    stop, F("stop: Stop motors.")
+    stop, F("stop: Stop motors."),
+    actionStart, F("actionStart: Start an action that will run to completion."),
+    actionStatus, F("actionStatus: Check action status.")
   );
 
   // Update encoder state every time. This should only be a few clock cycles per pass.
   update_encoder_state(&leftControl, digitalRead(leftControl.encoderPin));
   update_encoder_state(&rightControl, digitalRead(rightControl.encoderPin));
+  update_action(&navAction);
 }
 

@@ -5,6 +5,8 @@
 #ifndef MOTOR_H
 #define MOTOR_H
 
+#include "Arduino.h"
+
 // PWM modes. It's unclear where PWM should be applied so allow both approaches.
 // PWM_MODE_ENABLE means apply it to the enable pin (Mike style).
 // PWM_MODE_INPUT means apply it to the forward/reverse input pin (Jared style).
@@ -26,12 +28,9 @@ typedef struct {
   byte forwardPin;
   byte reversePin;
   byte encoderPin;
+  byte pwmMode;
 
   // Remaining attributes are used to interpret encoder readings
-
-  // Last direction sent to motor. Needed because we can't observe 
-  // rotation direction from the encoders.
-  byte lastDirection;
 
   // stablePinState is the state in which we have last seen the encoder pin
   // ENCODER_MIN_COUNT times consecutively.
@@ -45,9 +44,9 @@ typedef struct {
   unsigned short pinStateCount;
 
   // Count of low-to-high transitions we've seen since last reset.
-  // This is a signed value, i.e. if the direction is reverse then this
-  // will be negative.
-  int transitionCount;
+  // This is unsigned -- NavAction will keep track of the direction 
+  // of each motor.
+  unsigned int transitionCount;
 
 } MotorControl;
 
@@ -55,8 +54,8 @@ typedef struct {
 void setup_motor_pins(MotorControl *ctl);
 
 // Set direction and speed of a motor.
-// 0 for either direction or speed will stop.
-void run_motor(MotorControl* ctl, byte pwmMode, byte direction, byte speed);
+// Positive value for forward, negative for reverse, zero for stop
+void run_motor(MotorControl* ctl, short requestedSpeed);
 
 // Update encoder state based on a single observation of the encoder pin.
 void update_encoder_state(MotorControl *ctl, byte pinState);

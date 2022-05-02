@@ -13,12 +13,26 @@ void setup_motor_pins(MotorControl *ctl) {
   pinMode(ctl->encoderPin, INPUT);
 }
 
-void run_motor(MotorControl* ctl, byte pwmMode, byte direction, byte speed) {
+void run_motor(MotorControl* ctl, short requestedSpeed) {
 
-  if ((direction != DIR_FORWARD && direction != DIR_REVERSE) || speed == 0) {
+  byte speed;
+  byte direction;
+
+  if (requestedSpeed > 0) {
+    direction=DIR_FORWARD;
+    speed = (byte)max(requestedSpeed, 255);
+  } else if (requestedSpeed < 0) {
+    direction=DIR_REVERSE;
+    speed = (byte)max(-requestedSpeed, 255);
+  } else {
+    direction=DIR_STOP;
+    speed = 0;
+  }
+
+  if (speed == 0) {
     digitalWrite(ctl->reversePin, LOW);
     digitalWrite(ctl->forwardPin, LOW);
-  } else if (pwmMode == PWM_MODE_ENABLE) {
+  } else if (ctl->pwmMode == PWM_MODE_ENABLE) {
     analogWrite(ctl->enablePin, speed);
     if (direction == DIR_FORWARD) {
       digitalWrite(ctl->reversePin, LOW);
@@ -37,10 +51,6 @@ void run_motor(MotorControl* ctl, byte pwmMode, byte direction, byte speed) {
       analogWrite(ctl->reversePin, speed);
     }
   }
-
-  if (direction == DIR_FORWARD || direction == DIR_REVERSE) {
-    ctl->lastDirection = direction;
-  }
 }
 
 void update_encoder_state(MotorControl* ctl, byte pinState) {
@@ -54,12 +64,8 @@ void update_encoder_state(MotorControl* ctl, byte pinState) {
   if (ctl->pinStateCount >= ENCODER_MIN_COUNT && pinState != ctl->stablePinState) {
     ctl->stablePinState = pinState;
     if (pinState == HIGH) {
-      // Count rising edges, sign of count depends on direction.
-      if (ctl->lastDirection == DIR_FORWARD) {
-        ctl->transitionCount++;
-      } else if (ctl->lastDirection == DIR_REVERSE) {
-        ctl->transitionCount--;
-      }
+      // Count rising edges
+      ctl->transitionCount++;
     }
   }
 }
