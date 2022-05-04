@@ -69,8 +69,8 @@ void update_action(NavAction *action) {
         short newLeftSpeed = action->leftSpeed - ((leftTransitions-rightTransitions) * 5);
         short newRightSpeed = action->rightSpeed + ((leftTransitions-rightTransitions) * 5);
 
-        action->leftSpeed = max(96, min(255,newLeftSpeed));
-        action->rightSpeed = max(96, min(255,newRightSpeed));
+        action->leftSpeed = max(0, min(255,newLeftSpeed));
+        action->rightSpeed = max(0, min(255,newRightSpeed));
 
         run_motor(action->leftMotor, action->leftSpeed * leftSign(action->actionType));
         run_motor(action->rightMotor, action->rightSpeed * rightSign(action->actionType));
