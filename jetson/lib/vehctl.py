@@ -17,10 +17,12 @@ CONFIGS = {
             pwmMode=1,  # See constants in motor.h
         ),
         leftMotor=SimpleNamespace(
-            enablePin=9, forwardPin=7, reversePin=8, encoderPin=2
+            # enablePin=9, forwardPin=7, reversePin=8, encoderPin=2
+            enablePin=9, forwardPin=5, reversePin=4, encoderPin=2
         ),
         rightMotor=SimpleNamespace(
-            enablePin=6, forwardPin=4, reversePin=5, encoderPin=3
+            # enablePin=6, forwardPin=4, reversePin=5, encoderPin=3
+            enablePin=6, forwardPin=8, reversePin=7, encoderPin=3
         ),
     ),
     # Jared TODO -- update below
@@ -164,13 +166,14 @@ def drive():
     config = veh.config.vehicle
 
     for (dir, dist) in args.instructions:
-        print(dir, dist)
 
         if dir in ('F', 'B'):
             transitionsGoal = (dist*20)/(config.wheelDiam*math.pi)
         else:
             transitionsGoal =  ((dist*20)/360)*(config.wheelBase/config.wheelDiam)
         
+        print(dir, dist, "transitionsGoal:", transitionsGoal)
+
         dir_const = {
             'F': 1,
             'B': 2,
@@ -190,6 +193,18 @@ def drive():
                 right_speed = right_speed
             ))
             time.sleep(.010)
+        
+        # Arbitrary wait in case of further coasting.
+        time.sleep(.025)
+        action_state, left_transitions, left_speed, right_transitions, right_speed = veh.action_status()
+        print(dict(
+            action_state = action_state,
+            left_transitions = left_transitions,
+            left_speed = left_speed,
+            right_transitions = right_transitions,
+            right_speed = right_speed
+        ))
+
 
 
 if __name__ == '__main__':

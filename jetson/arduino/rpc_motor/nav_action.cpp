@@ -66,8 +66,20 @@ void update_action(NavAction *action) {
     action->rightTransitions = rightTransitions;
 
     if (leftTransitions != rightTransitions) {
-        short newLeftSpeed = action->leftSpeed - ((leftTransitions-rightTransitions) * 5);
-        short newRightSpeed = action->rightSpeed + ((leftTransitions-rightTransitions) * 5);
+        short newLeftSpeed = action->leftSpeed - ((leftTransitions-rightTransitions) * 2);
+        short newRightSpeed = action->rightSpeed + ((leftTransitions-rightTransitions) * 2);
+
+        // Scale back speed as we approach the goal:
+        // int remainingTransitions = action->transitionsGoal*2 - (leftTransitions + rightTransitions);
+        // if (remainingTransitions <= 20) {
+        //     newLeftSpeed *= pow(.8, (20-remainingTransitions)/4);
+        //     newRightSpeed *= pow(.8, (20-remainingTransitions)/4);
+        // }
+        int remainingTransitions = action->transitionsGoal*2 - (leftTransitions + rightTransitions);
+        if (remainingTransitions <= 16) {
+            newLeftSpeed = newRightSpeed = 0;
+        }
+        
 
         action->leftSpeed = max(0, min(255,newLeftSpeed));
         action->rightSpeed = max(0, min(255,newRightSpeed));
