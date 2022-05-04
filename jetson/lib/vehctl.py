@@ -1,6 +1,8 @@
+import argparse
 import logging
 import math
 import os
+import time
 from pose import Pose2D, pose_from_wheel_distances
 from simple_rpc import Interface
 from types import SimpleNamespace
@@ -10,23 +12,24 @@ _logger = logging.getLogger(__name__)
 CONFIGS = {
     "mkoehrsen": SimpleNamespace(
         vehicle=SimpleNamespace(
-            # Dimensions are in mm
-            wheelBase=194.0,
-            wheelDiam=69.0,
+            wheelBase=194.0 * .0394, # measured in mm, converted to inches
+            wheelDiam=69.0 * .0394, # ditto
             pwmMode=1,  # See constants in motor.h
         ),
         leftMotor=SimpleNamespace(
-            enablePin=9, forwardPin=7, reversePin=8, encoderPin=2
+            # enablePin=9, forwardPin=7, reversePin=8, encoderPin=2
+            enablePin=9, forwardPin=5, reversePin=4, encoderPin=2
         ),
         rightMotor=SimpleNamespace(
-            enablePin=6, forwardPin=4, reversePin=5, encoderPin=3
+            # enablePin=6, forwardPin=4, reversePin=5, encoderPin=3
+            enablePin=6, forwardPin=8, reversePin=7, encoderPin=3
         ),
     ),
     # Jared TODO -- update below
     "default": SimpleNamespace(
         vehicle=SimpleNamespace(
-            wheelBase=100,  # TODO
-            wheelCircum=69.0,
+            wheelBase=100 * .0394,  # TODO
+            wheelDiam=69.0 * .0394,
             pwmMode=1,  # See constants in motor.h
         ),
         leftMotor=SimpleNamespace(
@@ -116,6 +119,12 @@ class Vehicle:
             )
         )
 
+    def action_start(self, direction, transitions):
+        self.interface.actionStart(direction, transitions)
+    
+    def action_status(self):
+        return self.interface.actionStatus()
+
     def forward(self, speed):
         self._update_pos(*self.interface.forward(speed))
 
@@ -134,3 +143,69 @@ class Vehicle:
     def reset(self):
         self.interface.stop()
         self.pose_hist = [Pose2D()]
+
+def drive():
+    def instruction(instr_str):
+        # An instruction on the command line is a string of the form:
+        # <direction><dist>
+        # direction is one of (F, B, L, R)
+        # For (F, B) -- forwards, backwards -- the dist is in inches
+        # For (L, R) -- left, right -- the dist is in degrees.
+        # In the left/right case the vehicle pivots approximately in-place.
+        # Distances are integers.
+        dir = instr_str[0]
+        if dir not in ('F', 'B', 'L', 'R'):
+            raise ValueError
+        return (dir, int(instr_str[1:]))
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("instructions", nargs="+", type=instruction)
+    args = parser.parse_args()
+
+    veh = Vehicle()
+    config = veh.config.vehicle
+
+    for (dir, dist) in args.instructions:
+
+        if dir in ('F', 'B'):
+            transitionsGoal = (dist*20)/(config.wheelDiam*math.pi)
+        else:
+            transitionsGoal =  ((dist*20)/360)*(config.wheelBase/config.wheelDiam)
+        
+        print(dir, dist, "transitionsGoal:", transitionsGoal)
+
+        dir_const = {
+            'F': 1,
+            'B': 2,
+            'L': 3,
+            'R': 4
+        }[dir]
+
+        veh.action_start(dir_const, int(transitionsGoal))
+        action_state = 1
+        while action_state == 1:
+            action_state, left_transitions, left_speed, right_transitions, right_speed = veh.action_status()
+            print(dict(
+                action_state = action_state,
+                left_transitions = left_transitions,
+                left_speed = left_speed,
+                right_transitions = right_transitions,
+                right_speed = right_speed
+            ))
+            time.sleep(.010)
+        
+        # Arbitrary wait in case of further coasting.
+        time.sleep(.025)
+        action_state, left_transitions, left_speed, right_transitions, right_speed = veh.action_status()
+        print(dict(
+            action_state = action_state,
+            left_transitions = left_transitions,
+            left_speed = left_speed,
+            right_transitions = right_transitions,
+            right_speed = right_speed
+        ))
+
+
+
+if __name__ == '__main__':
+    drive()
