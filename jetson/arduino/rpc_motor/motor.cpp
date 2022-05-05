@@ -20,10 +20,10 @@ void run_motor(MotorControl* ctl, short requestedSpeed) {
 
   if (requestedSpeed > 0) {
     direction=DIR_FORWARD;
-    speed = (byte)max(requestedSpeed, 255);
+    speed = (byte)min(requestedSpeed, 255);
   } else if (requestedSpeed < 0) {
     direction=DIR_REVERSE;
-    speed = (byte)max(-requestedSpeed, 255);
+    speed = (byte)min(-requestedSpeed, 255);
   } else {
     direction=DIR_STOP;
     speed = 0;
@@ -44,10 +44,10 @@ void run_motor(MotorControl* ctl, short requestedSpeed) {
   } else {
     digitalWrite(ctl->enablePin, HIGH);
     if (direction == DIR_FORWARD) {
-      analogWrite(ctl->reversePin, speed);
-      digitalWrite(ctl->forwardPin, HIGH);
+      analogWrite(ctl->reversePin, 0);
+      analogWrite(ctl->forwardPin, speed);
     } else {
-      digitalWrite(ctl->forwardPin, LOW);
+      analogWrite(ctl->forwardPin, 0);
       analogWrite(ctl->reversePin, speed);
     }
   }
