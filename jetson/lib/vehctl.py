@@ -25,18 +25,17 @@ CONFIGS = {
             enablePin=6, forwardPin=8, reversePin=7, encoderPin=3
         ),
     ),
-    # Jared TODO -- update below
     "default": SimpleNamespace(
         vehicle=SimpleNamespace(
-            wheelBase=100 * .0394,  # TODO
+            wheelBase=5.25,  # TODO
             wheelDiam=69.0 * .0394,
-            pwmMode=1,  # See constants in motor.h
+            pwmMode=2,  # See constants in motor.h
         ),
         leftMotor=SimpleNamespace(
-            enablePin=9, forwardPin=7, reversePin=8, encoderPin=2
+            enablePin=12, forwardPin=10, reversePin=11, encoderPin=18
         ),
         rightMotor=SimpleNamespace(
-            enablePin=6, forwardPin=4, reversePin=5, encoderPin=3
+            enablePin=4, forwardPin=6, reversePin=5, encoderPin=19
         ),
     ),
 }
