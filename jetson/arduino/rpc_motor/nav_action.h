@@ -24,6 +24,10 @@ typedef struct {
     byte actionType = ATYPE_STOP;
     int transitionsGoal = 0;
 
+    // These are configured in the vehicle config.
+    short maximumSpeed = 0;
+    short minimumSpeed = 0;
+
     short leftSpeed = 0;
     short rightSpeed = 0;
 

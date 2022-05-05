@@ -14,8 +14,10 @@ NavAction navAction;
 // RPC interface starts here
 
 // Config functions
-void configureVehicle(byte pwmMode) {
+void configureVehicle(byte pwmMode, byte maxSpeed, byte minSpeed) {
   PWM_MODE = pwmMode;
+  navAction.maximumSpeed = maxSpeed;
+  navAction.minimumSpeed = minSpeed;
 }
 
 void configureLeftMotor(byte enablePin, byte forwardPin, byte reversePin, byte encoderPin) {
