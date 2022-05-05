@@ -12,24 +12,26 @@ _logger = logging.getLogger(__name__)
 CONFIGS = {
     "mkoehrsen": SimpleNamespace(
         vehicle=SimpleNamespace(
-            wheelBase=194.0 * .0394, # measured in mm, converted to inches
-            wheelDiam=69.0 * .0394, # ditto
+            wheelBase=7.8,
+            wheelDiam=2.7,
             pwmMode=1,  # See constants in motor.h
+            maximumSpeed=192,
+            minimumSpeed=160
         ),
         leftMotor=SimpleNamespace(
-            # enablePin=9, forwardPin=7, reversePin=8, encoderPin=2
-            enablePin=9, forwardPin=5, reversePin=4, encoderPin=2
+            enablePin=9, forwardPin=7, reversePin=8, encoderPin=2
         ),
         rightMotor=SimpleNamespace(
-            # enablePin=6, forwardPin=4, reversePin=5, encoderPin=3
-            enablePin=6, forwardPin=8, reversePin=7, encoderPin=3
+            enablePin=6, forwardPin=4, reversePin=5, encoderPin=3
         ),
     ),
     "default": SimpleNamespace(
         vehicle=SimpleNamespace(
-            wheelBase=5.25,  # TODO
-            wheelDiam=69.0 * .0394,
+            wheelBase=5.25,
+            wheelDiam=2.7,
             pwmMode=2,  # See constants in motor.h
+            maximumSpeed=80,
+            minimumSpeed=40 # TODO Jared tweak this 
         ),
         leftMotor=SimpleNamespace(
             enablePin=12, forwardPin=10, reversePin=11, encoderPin=18
@@ -81,6 +83,8 @@ class Vehicle:
 
         self.interface.configureVehicle(
             self.config.vehicle.pwmMode,
+            self.config.vehicle.maximumSpeed,
+            self.config.vehicle.minimumSpeed,
         )
 
         self.interface.configureLeftMotor(

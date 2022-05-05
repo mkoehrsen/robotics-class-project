@@ -5,8 +5,6 @@
 // long then something is wrong.
 #define TIMEOUT_INTERVAL 500
 
-#define TARGET_SPEED 255
-
 int leftSign(byte actionType) {
     if (actionType == ATYPE_FORWARD || actionType == ATYPE_RIGHT) return 1;
     else return -1;
@@ -32,8 +30,8 @@ void start_action(NavAction *action, byte actionType, int transitionsGoal) {
     action->rightTransitions = 0;
 
     // Speeds are unsigned, we apply sign when sent to the motor
-    action->leftSpeed = TARGET_SPEED;
-    action->rightSpeed = TARGET_SPEED;
+    action->leftSpeed = action->maximumSpeed;
+    action->rightSpeed = action->maximumSpeed;
 
     action->state = ST_ACTIVE;
     action->lastUpdateTime = millis();
@@ -58,7 +56,7 @@ void update_action(NavAction *action) {
         return;
     }
 
-    if (leftTransitions + rightTransitions >= action->transitionsGoal*2) {
+    if (leftTransitions >= action->transitionsGoal && rightTransitions >= action->transitionsGoal) {
         terminate_action(action, ST_SUCCEEDED);
         return;
     }
@@ -68,33 +66,14 @@ void update_action(NavAction *action) {
     action->rightTransitions = rightTransitions;
 
     if (leftTransitions != rightTransitions) {
-        // short newLeftSpeed = action->leftSpeed - ((leftTransitions-rightTransitions) * 2);
-        // short newRightSpeed = action->rightSpeed + ((leftTransitions-rightTransitions) * 2);
+        short newLeftSpeed = action->maximumSpeed;
+        short newRightSpeed = action->maximumSpeed;
 
-        // // Scale back speed as we approach the goal:
-        // // int remainingTransitions = action->transitionsGoal*2 - (leftTransitions + rightTransitions);
-        // // if (remainingTransitions <= 20) {
-        // //     newLeftSpeed *= pow(.8, (20-remainingTransitions)/4);
-        // //     newRightSpeed *= pow(.8, (20-remainingTransitions)/4);
-        // // }
-        // // int remainingTransitions = action->transitionsGoal*2 - (leftTransitions + rightTransitions);
-        // // if (remainingTransitions <= 16) {
-        // //     newLeftSpeed = newRightSpeed = 0;
-        // // }
-
-        // if (max(newLeftSpeed, newRightSpeed) > TARGET_SPEED) {
-        //     short diff = max(newLeftSpeed, newRightSpeed) - TARGET_SPEED;
-
-        //     newLeftSpeed -= diff;
-        //     newRightSpeed -= diff;
-        // } else if (max(newLeftSpeed, newRightSpeed) < TARGET_SPEED) {
-        //     short diff = TARGET_SPEED - max(newLeftSpeed, newRightSpeed);
-
-        //     newLeftSpeed += diff;
-        //     newRightSpeed += diff;
+        // If we're close to the goal or past it, reduce speed:
+        // if (max(leftTransitions, rightTransitions) >= action->transitionsGoal) {
+        //     newLeftSpeed = action->minimumSpeed;
+        //     newRightSpeed = action->minimumSpeed;
         // }
-        short newLeftSpeed = TARGET_SPEED;
-        short newRightSpeed = TARGET_SPEED;
 
         if (leftTransitions > rightTransitions) {
             newLeftSpeed = 0;
