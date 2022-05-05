@@ -82,12 +82,16 @@ void update_action(NavAction *action) {
         //     newLeftSpeed = newRightSpeed = 0;
         // }
 
-        if (newLeftSpeed > TARGET_SPEED) {
-            newRightSpeed -= (newLeftSpeed - TARGET_SPEED);
-            newLeftSpeed = TARGET_SPEED;
-        } else if (newRightSpeed > TARGET_SPEED) {
-            newLeftSpeed -= (newRightSpeed - TARGET_SPEED);
-            newRightSpeed = TARGET_SPEED;
+        if (max(newLeftSpeed, newRightSpeed) > TARGET_SPEED) {
+            short diff = max(newLeftSpeed, newRightSpeed) - TARGET_SPEED;
+
+            newLeftSpeed -= diff;
+            newRightSpeed -= diff;
+        } else if (max(newLeftSpeed, newRightSpeed) < TARGET_SPEED) {
+            short diff = TARGET_SPEED - max(newLeftSpeed, newRightSpeed);
+
+            newLeftSpeed += diff;
+            newRightSpeed += diff;
         }
 
         action->leftSpeed = max(0, min(255,newLeftSpeed));
