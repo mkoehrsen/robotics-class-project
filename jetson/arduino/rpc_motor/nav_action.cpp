@@ -5,6 +5,8 @@
 // long then something is wrong.
 #define TIMEOUT_INTERVAL 500
 
+#define TARGET_SPEED 80
+
 int leftSign(byte actionType) {
     if (actionType == ATYPE_FORWARD || actionType == ATYPE_RIGHT) return 1;
     else return -1;
@@ -30,8 +32,8 @@ void start_action(NavAction *action, byte actionType, int transitionsGoal) {
     action->rightTransitions = 0;
 
     // Speeds are unsigned, we apply sign when sent to the motor
-    action->leftSpeed = 128;
-    action->rightSpeed = 128;
+    action->leftSpeed = TARGET_SPEED;
+    action->rightSpeed = TARGET_SPEED;
 
     action->state = ST_ACTIVE;
     action->lastUpdateTime = millis();
@@ -75,11 +77,18 @@ void update_action(NavAction *action) {
         //     newLeftSpeed *= pow(.8, (20-remainingTransitions)/4);
         //     newRightSpeed *= pow(.8, (20-remainingTransitions)/4);
         // }
-        int remainingTransitions = action->transitionsGoal*2 - (leftTransitions + rightTransitions);
-        if (remainingTransitions <= 16) {
-            newLeftSpeed = newRightSpeed = 0;
+        // int remainingTransitions = action->transitionsGoal*2 - (leftTransitions + rightTransitions);
+        // if (remainingTransitions <= 16) {
+        //     newLeftSpeed = newRightSpeed = 0;
+        // }
+
+        if (newLeftSpeed > TARGET_SPEED) {
+            newRightSpeed -= (newLeftSpeed - TARGET_SPEED);
+            newLeftSpeed = TARGET_SPEED;
+        } else if (newRightSpeed > TARGET_SPEED) {
+            newLeftSpeed -= (newRightSpeed - TARGET_SPEED);
+            newRightSpeed = TARGET_SPEED;
         }
-        
 
         action->leftSpeed = max(0, min(255,newLeftSpeed));
         action->rightSpeed = max(0, min(255,newRightSpeed));
