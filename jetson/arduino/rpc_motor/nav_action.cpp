@@ -5,7 +5,7 @@
 // long then something is wrong.
 #define TIMEOUT_INTERVAL 500
 
-#define TARGET_SPEED 80
+#define TARGET_SPEED 255
 
 int leftSign(byte actionType) {
     if (actionType == ATYPE_FORWARD || actionType == ATYPE_RIGHT) return 1;
@@ -68,30 +68,38 @@ void update_action(NavAction *action) {
     action->rightTransitions = rightTransitions;
 
     if (leftTransitions != rightTransitions) {
-        short newLeftSpeed = action->leftSpeed - ((leftTransitions-rightTransitions) * 2);
-        short newRightSpeed = action->rightSpeed + ((leftTransitions-rightTransitions) * 2);
+        // short newLeftSpeed = action->leftSpeed - ((leftTransitions-rightTransitions) * 2);
+        // short newRightSpeed = action->rightSpeed + ((leftTransitions-rightTransitions) * 2);
 
-        // Scale back speed as we approach the goal:
-        // int remainingTransitions = action->transitionsGoal*2 - (leftTransitions + rightTransitions);
-        // if (remainingTransitions <= 20) {
-        //     newLeftSpeed *= pow(.8, (20-remainingTransitions)/4);
-        //     newRightSpeed *= pow(.8, (20-remainingTransitions)/4);
+        // // Scale back speed as we approach the goal:
+        // // int remainingTransitions = action->transitionsGoal*2 - (leftTransitions + rightTransitions);
+        // // if (remainingTransitions <= 20) {
+        // //     newLeftSpeed *= pow(.8, (20-remainingTransitions)/4);
+        // //     newRightSpeed *= pow(.8, (20-remainingTransitions)/4);
+        // // }
+        // // int remainingTransitions = action->transitionsGoal*2 - (leftTransitions + rightTransitions);
+        // // if (remainingTransitions <= 16) {
+        // //     newLeftSpeed = newRightSpeed = 0;
+        // // }
+
+        // if (max(newLeftSpeed, newRightSpeed) > TARGET_SPEED) {
+        //     short diff = max(newLeftSpeed, newRightSpeed) - TARGET_SPEED;
+
+        //     newLeftSpeed -= diff;
+        //     newRightSpeed -= diff;
+        // } else if (max(newLeftSpeed, newRightSpeed) < TARGET_SPEED) {
+        //     short diff = TARGET_SPEED - max(newLeftSpeed, newRightSpeed);
+
+        //     newLeftSpeed += diff;
+        //     newRightSpeed += diff;
         // }
-        // int remainingTransitions = action->transitionsGoal*2 - (leftTransitions + rightTransitions);
-        // if (remainingTransitions <= 16) {
-        //     newLeftSpeed = newRightSpeed = 0;
-        // }
+        short newLeftSpeed = TARGET_SPEED;
+        short newRightSpeed = TARGET_SPEED;
 
-        if (max(newLeftSpeed, newRightSpeed) > TARGET_SPEED) {
-            short diff = max(newLeftSpeed, newRightSpeed) - TARGET_SPEED;
-
-            newLeftSpeed -= diff;
-            newRightSpeed -= diff;
-        } else if (max(newLeftSpeed, newRightSpeed) < TARGET_SPEED) {
-            short diff = TARGET_SPEED - max(newLeftSpeed, newRightSpeed);
-
-            newLeftSpeed += diff;
-            newRightSpeed += diff;
+        if (leftTransitions > rightTransitions) {
+            newLeftSpeed = 0;
+        } else {
+            newRightSpeed = 0;
         }
 
         action->leftSpeed = max(0, min(255,newLeftSpeed));
