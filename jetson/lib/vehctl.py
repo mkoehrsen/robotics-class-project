@@ -1,4 +1,5 @@
 import argparse
+import enum
 import itertools
 import logging
 import math
@@ -46,30 +47,40 @@ CONFIGS = {
 }
 
 
+class Direction(enum.Enum):
+    STOP = 0
+    FORWARD = 1
+    REVERSE = 2
+    LEFT = 3
+    RIGHT = 4
+
+
 class _DummyInterface:
     def __init__(self):
-        self.last_dir = "stop"
+        self.last_dir = Direction.STOP
 
     def __getattr__(self, attrname):
-        def log(*args):
-            _logger.debug(
-                f"_DummyVehicle: {attrname}({', '.join(str(x) for x in args)})"
-            )
+        # TODO not really using this currently, needs updating
+        pass
+        # def log(*args):
+        #     _logger.debug(
+        #         f"_DummyVehicle: {attrname}({', '.join(str(x) for x in args)})"
+        #     )
 
-            result = (0, 0)
-            if self.last_dir == "forward":
-                result = (30, 30)
-            elif self.last_dir == "reverse":
-                result = (-30, -30)
-            elif self.last_dir == "left":
-                result = (-10, 10)
-            elif self.last_dir == "right":
-                result = (10, -10)
+        #     result = (0, 0)
+        #     if self.last_dir == "forward":
+        #         result = (30, 30)
+        #     elif self.last_dir == "reverse":
+        #         result = (-30, -30)
+        #     elif self.last_dir == "left":
+        #         result = (-10, 10)
+        #     elif self.last_dir == "right":
+        #         result = (10, -10)
 
-            self.last_dir = attrname
-            return result
+        #     self.last_dir = attrname
+        #     return result
 
-        return log
+        # return log
 
 
 class Vehicle:
@@ -125,12 +136,6 @@ class Vehicle:
             )
         )
 
-    def action_start(self, direction, transitions):
-        self.interface.actionStart(direction, transitions)
-
-    def action_status(self):
-        return self.interface.actionStatus()
-
     def forward(self, speed):
         self._update_pos(*self.interface.forward(speed))
 
@@ -150,8 +155,24 @@ class Vehicle:
         self.interface.stop()
         self.pose_hist = [Pose2D()]
 
-    def perform_action(self, dir, transitions_goal):
-        self.action_start(dir, transitions_goal)
+    def action_start(self, direction, transitions):
+        self.interface.actionStart(direction.value, transitions)
+
+    def action_status(self):
+        return self.interface.actionStatus()
+
+    def perform_action(self, direction, dist):
+        config = self.config.vehicle
+
+        if direction in (Direction.FORWARD, Direction.REVERSE):
+            transitions_goal = (dist * 20) / (config.wheelDiam * math.pi)
+        else:
+            transitions_goal = ((dist * 20) / 360) * (
+                config.wheelBase / config.wheelDiam
+            )
+        print(direction, dist, "transitions_goal:", transitions_goal)
+
+        self.action_start(direction, transitions_goal)
         action_state = 1
         while action_state == 1:
             (
@@ -170,7 +191,7 @@ class Vehicle:
                     right_speed=right_speed,
                 )
             )
-            time.sleep(0.010)
+            time.sleep(0.050)
 
         # Arbitrary wait in case of further coasting.
         time.sleep(0.025)
@@ -193,6 +214,13 @@ class Vehicle:
 
 
 def drive():
+    direction_map = {
+        "F": Direction.FORWARD,
+        "B": Direction.REVERSE,  # "R" is used for RIGHT
+        "L": Direction.LEFT,
+        "R": Direction.RIGHT,
+    }
+
     def instruction(instr_str):
         # An instruction on the command line is a string of the form:
         # <direction><dist>
@@ -201,9 +229,7 @@ def drive():
         # For (L, R) -- left, right -- the dist is in degrees.
         # In the left/right case the vehicle pivots approximately in-place.
         # Distances are integers.
-        dir = instr_str[0]
-        if dir not in ("F", "B", "L", "R"):
-            raise ValueError
+        dir = direction_map[instr_str[0]]
         return (dir, int(instr_str[1:]))
 
     parser = argparse.ArgumentParser()
@@ -211,22 +237,9 @@ def drive():
     args = parser.parse_args()
 
     veh = Vehicle()
-    config = veh.config.vehicle
 
     for (dir, dist) in args.instructions:
-
-        if dir in ("F", "B"):
-            transitionsGoal = (dist * 20) / (config.wheelDiam * math.pi)
-        else:
-            transitionsGoal = ((dist * 20) / 360) * (
-                config.wheelBase / config.wheelDiam
-            )
-
-        print(dir, dist, "transitionsGoal:", transitionsGoal)
-
-        dir_const = {"F": 1, "B": 2, "L": 3, "R": 4}[dir]
-
-        veh.perform_action(dir_const, int(transitionsGoal))
+        veh.perform_action(dir, dist)
 
 
 if __name__ == "__main__":

@@ -113,7 +113,8 @@ def main():
         debug=0,
     )
 
-    for _ in range(3):
+    num_steps = 10
+    for _ in range(num_steps):
         img = cv2.cvtColor(
             calibration.capture_image(tmpdir, veh.config.vehicle.cameraOrientation),
             cv2.COLOR_RGB2GRAY,
@@ -178,7 +179,7 @@ def main():
             tag_world_points.update(tag_veh_points)
 
         print_tag_points("All known points in world coordinates: ", tag_world_points)
-        veh.perform_action(4, 3)  # Right 45 degrees TODO fix
+        veh.perform_action(vehctl.Direction.RIGHT, 180 // num_steps)
 
 
 if __name__ == "__main__":
