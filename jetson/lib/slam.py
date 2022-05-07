@@ -1,6 +1,9 @@
 import argparse
 import calibration
+import cv2
 import dt_apriltags
+import itertools
+import numpy as np
 import vehctl
 import tempfile
 
@@ -12,7 +15,7 @@ def project_floor(lower, upper):
     # Note lower has the larger y value.
     # Cheating here a bit by not projecting through the vertical distance exactly,
     # but the assumption is that the x values will be nearly identical
-    return (lower[0] + scale*(lower[0] - upper[0]), lower[1] + scale*(lower[1] - upper[1])])
+    return [lower[0] + scale*(lower[0] - upper[0]), lower[1] + scale*(lower[1] - upper[1])]
 
 
 def estimate_transform(vehicle_points, world_points):
@@ -52,6 +55,17 @@ def estimate_transform(vehicle_points, world_points):
     ), axis=1)
     return transform
 
+def vehicle2world(v2w_matrix, points):
+    points = np.array(points)
+    points = np.concatenate([points, np.ones((points.shape[0], 1))], axis=1)
+    pred = (v2w_matrix @ points.T).T
+    return np.split(pred, [2], axis=1)[0]
+
+def print_tag_points(msg, tag2points):
+    print(msg)
+    for (tag_id, points) in tag2points.items():
+        print(tag_id, points)
+
 def main():
 
     parser = argparse.ArgumentParser()
@@ -62,6 +76,7 @@ def main():
     # Two points correspond to a tag based on projecting down to floor.
     tag_world_points = {}
 
+    veh = vehctl.Vehicle()
     veh_hmat, _, _ = calibration.read_calibration()
 
     # pseudocode:
@@ -104,6 +119,7 @@ def main():
             for t in tags
         }
 
+        print_tag_points("Current points in vehicle coordinates", tag_veh_points)
 
         if len(tag_world_points) > 0:
             # For detected tags, partition into known and unknown
@@ -118,12 +134,12 @@ def main():
 
             assert len(known_world_points) > 0, "No common points"        
 
-            vehicle2world = estimate_transform(
+            v2w_matrix = estimate_transform(
                 np.array(known_veh_points), np.array(known_world_points)
             )
 
             new_veh_points = list(itertools.chain(*[tag_veh_points[tag_id] for tag_id in new_tags]))
-            new_world_points = [(p[0], p[1]) for p in (vehicle2world @ np.array(new_veh_points).T).T]
+            new_world_points = [(p[0], p[1]) for p in vehicle2world(v2w_matrix, new_veh_points)]
 
             # Gather new world points into pairs and associate with tag ids:
             for (i, tag_id) in enumerate(new_tags):
@@ -133,7 +149,9 @@ def main():
             # First time through, use current coordinate frame as world frame
             tag_world_points.update(tag_veh_points)
         
-        print("Tag points in world coordinates: ", tag_world_points)
-        veh.perform_action(4, 45) # Right 45 degrees
+        print_tag_points("All known points in world coordinates: ", tag_world_points)
+        veh.perform_action(4, 3) # Right 45 degrees TODO fix
 
 
+if __name__=='__main__':
+    main()

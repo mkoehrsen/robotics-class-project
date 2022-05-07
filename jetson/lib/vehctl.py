@@ -1,4 +1,5 @@
 import argparse
+import itertools
 import logging
 import math
 import os
@@ -147,11 +148,11 @@ class Vehicle:
         self.interface.stop()
         self.pose_hist = [Pose2D()]
     
-    def perform_action(self, dir, transitions_goal)
-        veh.action_start(dir, transitions_goal)
+    def perform_action(self, dir, transitions_goal):
+        self.action_start(dir, transitions_goal)
         action_state = 1
         while action_state == 1:
-            action_state, left_transitions, left_speed, right_transitions, right_speed = veh.action_status()
+            action_state, left_transitions, left_speed, right_transitions, right_speed = self.action_status()
             print(dict(
                 action_state = action_state,
                 left_transitions = left_transitions,
@@ -163,7 +164,7 @@ class Vehicle:
         
         # Arbitrary wait in case of further coasting.
         time.sleep(.025)
-        action_state, left_transitions, left_speed, right_transitions, right_speed = veh.action_status()
+        action_state, left_transitions, left_speed, right_transitions, right_speed = self.action_status()
         print(dict(
             action_state = action_state,
             left_transitions = left_transitions,
