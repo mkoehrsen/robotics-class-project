@@ -97,7 +97,7 @@ def apply_homography(hmat, points):
     # Note -- it turns out the function cv2.perspectiveTransform also does this operation.
     # The following gives the same result other than some small numeric differences.
     # cv2.perspectiveTransform(points.reshape(1,len(points),2), hmat).reshape(len(points),2)
-
+    points = np.array(points)
     points = np.concatenate([points, np.ones((points.shape[0], 1))], axis=1)
     pred_raw = np.matmul(hmat, points.transpose()).transpose()
     pred, scale = np.split(pred_raw, [2], axis=1)
@@ -106,6 +106,30 @@ def apply_homography(hmat, points):
 
 class TagsNotDetectedException(Exception):
     pass
+
+def capture_image(tmpdir, orientation):
+    subprocess.run(
+        [
+            "nvgstcapture",
+            "-m",
+            "1",
+            f"--orientation={orientation}",
+            "-A",
+            "--capture-auto=1",
+            "--file-name",
+            tmpdir + "/",
+        ],
+        check=True,
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+    )
+    image_file = sorted(
+        [fn for fn in os.listdir(tmpdir) if fn.endswith(".jpg")],
+        key=lambda fn: os.stat(os.path.join(tmpdir, fn)).st_ctime,
+    )[-1]
+    return cv2.cvtColor(
+        cv2.imread(os.path.join(tmpdir, image_file)), cv2.COLOR_BGR2RGB
+    )
 
 
 class CalibrationSession(object):
@@ -131,30 +155,6 @@ class CalibrationSession(object):
         self.input_img = None
         self.input_tags = None
 
-    def capture_image(self):
-        subprocess.run(
-            [
-                "nvgstcapture",
-                "-m",
-                "1",
-                f"--orientation={self.orientation}",
-                "-A",
-                "--capture-auto=1",
-                "--file-name",
-                self.tmpdir + "/",
-            ],
-            check=True,
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-        )
-        image_file = sorted(
-            [fn for fn in os.listdir(self.tmpdir) if fn.endswith(".jpg")],
-            key=lambda fn: os.stat(os.path.join(self.tmpdir, fn)).st_ctime,
-        )[-1]
-        return cv2.cvtColor(
-            cv2.imread(os.path.join(self.tmpdir, image_file)), cv2.COLOR_BGR2RGB
-        )
-
     def calibrate(self):
         best_img = None
         best_tags = []
@@ -162,7 +162,7 @@ class CalibrationSession(object):
 
         while len(best_tags) < self.desired_tags and remaining_tries > 0:
 
-            img = self.capture_image()
+            img = capture_image(self.tmpdir, self.orientation)
             img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             tags = self.at_detector.detect(img_gray)
 

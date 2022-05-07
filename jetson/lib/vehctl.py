@@ -146,6 +146,32 @@ class Vehicle:
     def reset(self):
         self.interface.stop()
         self.pose_hist = [Pose2D()]
+    
+    def perform_action(self, dir, transitions_goal)
+        veh.action_start(dir, transitions_goal)
+        action_state = 1
+        while action_state == 1:
+            action_state, left_transitions, left_speed, right_transitions, right_speed = veh.action_status()
+            print(dict(
+                action_state = action_state,
+                left_transitions = left_transitions,
+                left_speed = left_speed,
+                right_transitions = right_transitions,
+                right_speed = right_speed
+            ))
+            time.sleep(.010)
+        
+        # Arbitrary wait in case of further coasting.
+        time.sleep(.025)
+        action_state, left_transitions, left_speed, right_transitions, right_speed = veh.action_status()
+        print(dict(
+            action_state = action_state,
+            left_transitions = left_transitions,
+            left_speed = left_speed,
+            right_transitions = right_transitions,
+            right_speed = right_speed
+        ))
+
 
 def drive():
     def instruction(instr_str):
@@ -184,30 +210,7 @@ def drive():
             'R': 4
         }[dir]
 
-        veh.action_start(dir_const, int(transitionsGoal))
-        action_state = 1
-        while action_state == 1:
-            action_state, left_transitions, left_speed, right_transitions, right_speed = veh.action_status()
-            print(dict(
-                action_state = action_state,
-                left_transitions = left_transitions,
-                left_speed = left_speed,
-                right_transitions = right_transitions,
-                right_speed = right_speed
-            ))
-            time.sleep(.010)
-        
-        # Arbitrary wait in case of further coasting.
-        time.sleep(.025)
-        action_state, left_transitions, left_speed, right_transitions, right_speed = veh.action_status()
-        print(dict(
-            action_state = action_state,
-            left_transitions = left_transitions,
-            left_speed = left_speed,
-            right_transitions = right_transitions,
-            right_speed = right_speed
-        ))
-
+        veh.perform_action(dir_const, int(transitionsGoal))
 
 
 if __name__ == '__main__':
