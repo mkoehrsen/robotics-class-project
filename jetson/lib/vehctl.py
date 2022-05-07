@@ -17,7 +17,8 @@ CONFIGS = {
             wheelDiam=2.7,
             pwmMode=1,  # See constants in motor.h
             maximumSpeed=192,
-            minimumSpeed=160
+            minimumSpeed=160,
+            cameraOrientation=2,  # Invert 180, value passed to nvgstcapture
         ),
         leftMotor=SimpleNamespace(
             enablePin=9, forwardPin=7, reversePin=8, encoderPin=2
@@ -32,7 +33,8 @@ CONFIGS = {
             wheelDiam=2.7,
             pwmMode=2,  # See constants in motor.h
             maximumSpeed=80,
-            minimumSpeed=40 # TODO Jared tweak this 
+            minimumSpeed=40,
+            cameraOrientation=0,
         ),
         leftMotor=SimpleNamespace(
             enablePin=12, forwardPin=10, reversePin=11, encoderPin=18
@@ -125,7 +127,7 @@ class Vehicle:
 
     def action_start(self, direction, transitions):
         self.interface.actionStart(direction, transitions)
-    
+
     def action_status(self):
         return self.interface.actionStatus()
 
@@ -147,31 +149,47 @@ class Vehicle:
     def reset(self):
         self.interface.stop()
         self.pose_hist = [Pose2D()]
-    
+
     def perform_action(self, dir, transitions_goal):
         self.action_start(dir, transitions_goal)
         action_state = 1
         while action_state == 1:
-            action_state, left_transitions, left_speed, right_transitions, right_speed = self.action_status()
-            print(dict(
-                action_state = action_state,
-                left_transitions = left_transitions,
-                left_speed = left_speed,
-                right_transitions = right_transitions,
-                right_speed = right_speed
-            ))
-            time.sleep(.010)
-        
+            (
+                action_state,
+                left_transitions,
+                left_speed,
+                right_transitions,
+                right_speed,
+            ) = self.action_status()
+            print(
+                dict(
+                    action_state=action_state,
+                    left_transitions=left_transitions,
+                    left_speed=left_speed,
+                    right_transitions=right_transitions,
+                    right_speed=right_speed,
+                )
+            )
+            time.sleep(0.010)
+
         # Arbitrary wait in case of further coasting.
-        time.sleep(.025)
-        action_state, left_transitions, left_speed, right_transitions, right_speed = self.action_status()
-        print(dict(
-            action_state = action_state,
-            left_transitions = left_transitions,
-            left_speed = left_speed,
-            right_transitions = right_transitions,
-            right_speed = right_speed
-        ))
+        time.sleep(0.025)
+        (
+            action_state,
+            left_transitions,
+            left_speed,
+            right_transitions,
+            right_speed,
+        ) = self.action_status()
+        print(
+            dict(
+                action_state=action_state,
+                left_transitions=left_transitions,
+                left_speed=left_speed,
+                right_transitions=right_transitions,
+                right_speed=right_speed,
+            )
+        )
 
 
 def drive():
@@ -184,7 +202,7 @@ def drive():
         # In the left/right case the vehicle pivots approximately in-place.
         # Distances are integers.
         dir = instr_str[0]
-        if dir not in ('F', 'B', 'L', 'R'):
+        if dir not in ("F", "B", "L", "R"):
             raise ValueError
         return (dir, int(instr_str[1:]))
 
@@ -197,22 +215,19 @@ def drive():
 
     for (dir, dist) in args.instructions:
 
-        if dir in ('F', 'B'):
-            transitionsGoal = (dist*20)/(config.wheelDiam*math.pi)
+        if dir in ("F", "B"):
+            transitionsGoal = (dist * 20) / (config.wheelDiam * math.pi)
         else:
-            transitionsGoal =  ((dist*20)/360)*(config.wheelBase/config.wheelDiam)
-        
+            transitionsGoal = ((dist * 20) / 360) * (
+                config.wheelBase / config.wheelDiam
+            )
+
         print(dir, dist, "transitionsGoal:", transitionsGoal)
 
-        dir_const = {
-            'F': 1,
-            'B': 2,
-            'L': 3,
-            'R': 4
-        }[dir]
+        dir_const = {"F": 1, "B": 2, "L": 3, "R": 4}[dir]
 
         veh.perform_action(dir_const, int(transitionsGoal))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     drive()
