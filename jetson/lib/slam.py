@@ -5,6 +5,7 @@ import dt_apriltags
 import itertools
 import numpy as np
 import vehctl
+import camera
 import tempfile
 
 
@@ -259,12 +260,12 @@ def main():
         debug=0,
     )
 
+    frame_reader = camera.FrameSession(veh.config.vehicle.cameraOrientation, save="/tmp")
+
     num_steps = 10
     for step in range(num_steps):
-        img = cv2.cvtColor(
-            calibration.capture_image(tmpdir, veh.config.vehicle.cameraOrientation),
-            cv2.COLOR_RGB2GRAY,
-        )
+
+        img = cv2.cvtColor(next(frame_reader), cv2.COLOR_RGB2GRAY)
         tags = at_detector.detect(img)
 
         # Mapping from tag id to points in vehicle coordinates
@@ -309,6 +310,9 @@ def main():
             new_veh_points = list(
                 itertools.chain(*[tag_veh_points[tag_id] for tag_id in new_tags])
             )
+            if len(new_veh_points) == 0:
+                print("No new points observed; continuing.")
+                continue
             new_world_points = [
                 (p[0], p[1]) for p in vehicle2world(v2w_matrix, new_veh_points)
             ]
@@ -332,6 +336,7 @@ def main():
             print(f"Writing current map to {mapfile}")
             f.write(render_tag_points(tag_world_points))
 
+    frame_reader.close()
 
 if __name__ == "__main__":
     main()
