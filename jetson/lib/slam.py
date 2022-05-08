@@ -1,4 +1,5 @@
 import argparse
+import time
 import calibration
 import cv2
 import dt_apriltags
@@ -265,8 +266,13 @@ def main():
     num_steps = 10
     for step in range(num_steps):
 
-        img = cv2.cvtColor(next(frame_reader), cv2.COLOR_RGB2GRAY)
-        tags = at_detector.detect(img)
+        # allow some time for the vehicle to settle and give a crisp image
+        for i in range(10):
+            img = cv2.cvtColor(next(frame_reader), cv2.COLOR_RGB2GRAY)
+            tags = at_detector.detect(img)
+            if tags:
+                break
+            time.sleep(0.01)
 
         # Mapping from tag id to points in vehicle coordinates
         tag_veh_points = {

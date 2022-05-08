@@ -194,7 +194,7 @@ class Vehicle:
             time.sleep(0.050)
 
         # Arbitrary wait in case of further coasting.
-        time.sleep(0.025)
+        # time.sleep(.2)
         (
             action_state,
             left_transitions,
