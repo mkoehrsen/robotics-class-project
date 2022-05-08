@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from camera import capture_image
 
 """
 Calibration protocol:
@@ -106,29 +107,6 @@ def apply_homography(hmat, points):
 
 class TagsNotDetectedException(Exception):
     pass
-
-
-def capture_image(tmpdir, orientation):
-    subprocess.run(
-        [
-            "nvgstcapture",
-            "-m",
-            "1",
-            f"--orientation={orientation}",
-            "-A",
-            "--capture-auto=1",
-            "--file-name",
-            tmpdir + "/",
-        ],
-        check=True,
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-    )
-    image_file = sorted(
-        [fn for fn in os.listdir(tmpdir) if fn.endswith(".jpg")],
-        key=lambda fn: os.stat(os.path.join(tmpdir, fn)).st_ctime,
-    )[-1]
-    return cv2.cvtColor(cv2.imread(os.path.join(tmpdir, image_file)), cv2.COLOR_BGR2RGB)
 
 
 class CalibrationSession(object):
