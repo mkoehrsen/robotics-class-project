@@ -1,8 +1,7 @@
 import argparse
 import calibration
 import cv2
-
-# import dt_apriltags
+import dt_apriltags
 import itertools
 import numpy as np
 import vehctl
